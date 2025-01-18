@@ -156,6 +156,9 @@ namespace ZG
         {
             get
             {
+                if (!__WaitingUserConfirmationOperation())
+                    return false;
+
                 if (Type != AndroidAssetPackType.InstallTime)
                     return status == AndroidAssetPackStatus.Completed;
 
@@ -310,8 +313,9 @@ namespace ZG
             }
             else
             {
+                path = AndroidAssetPacks.GetAssetPackPath(name);
 #if UNITY_ANDROID && !UNITY_EDITOR
-                if (string.IsNullOrEmpty(AndroidAssetPacks.GetAssetPackPath(name)))
+                if (string.IsNullOrEmpty(path))
                     AndroidAssetPacks.DownloadAssetPackAsync(new string[] { name }, __Callback);
                 else
 #endif
@@ -319,8 +323,6 @@ namespace ZG
                     downloadProgress = 1.0f;
 
                     status = AndroidAssetPackStatus.Completed;
-                    
-                    path = AndroidAssetPacks.GetAssetPackPath(Name);
                 }
 
                 AssetUtility.Register(AndroidAssetPackHeader.GetName(name), this);
@@ -373,7 +375,7 @@ namespace ZG
                     case AndroidAssetPackStatus.Downloading:
                     case AndroidAssetPackStatus.Transferring:
 
-                        downloadProgress = (float)(androidAssetPackInfo.bytesDownloaded * 1.0 / androidAssetPackInfo.size);
+                        downloadProgress = androidAssetPackInfo.transferProgress;
                         break;
                     case AndroidAssetPackStatus.Completed:
                         downloadProgress = 1.0f;
@@ -388,31 +390,7 @@ namespace ZG
                         if (__userConfirmationOperation == null)
                             __userConfirmationOperation = AndroidAssetPacks.RequestToUseMobileDataAsync();
 
-                        if (__userConfirmationOperation.isDone)
-                        {
-                            var result = __userConfirmationOperation.result;
-                            if(result == null)
-                            {
-                                // userConfirmationOperation finished with an error. Something went
-                                // wrong when displaying the prompt to the user, and they weren't
-                                // able to interact with the dialog. In this case, we recommend
-                                // developers wait for Wi-Fi before attempting to download again.
-                                // You can get more info by calling GetError() on the operation.
-                                Application.Quit();
-                            }
-                            else if(result.allowed)
-                            {
-                                // User accepted the confirmation dialog - download will start
-                                // automatically (no action needed).
-                                __userConfirmationOperation = null;
-                            }
-                            else
-                            {
-                                // User canceled or declined the dialog. Await Wi-Fi connection, or
-                                // re-prompt the user.
-                                Application.Quit();
-                            }
-                        }
+                        __WaitingUserConfirmationOperation();
                         break;
                     default:
                         Debug.LogError(status);
@@ -423,6 +401,42 @@ namespace ZG
                 }
             }
 
+        }
+
+        private bool __WaitingUserConfirmationOperation()
+        {
+            if (__userConfirmationOperation == null)
+                return true;
+
+            if (__userConfirmationOperation.isDone)
+            {
+                var result = __userConfirmationOperation.result;
+                if (result == null)
+                {
+                    // userConfirmationOperation finished with an error. Something went
+                    // wrong when displaying the prompt to the user, and they weren't
+                    // able to interact with the dialog. In this case, we recommend
+                    // developers wait for Wi-Fi before attempting to download again.
+                    // You can get more info by calling GetError() on the operation.
+                    Application.Quit();
+                }
+                else if (result.allowed)
+                {
+                    // User accepted the confirmation dialog - download will start
+                    // automatically (no action needed).
+                    __userConfirmationOperation = null;
+                }
+                else
+                {
+                    // User canceled or declined the dialog. Await Wi-Fi connection, or
+                    // re-prompt the user.
+                    Application.Quit();
+                }
+
+                return true;
+            }
+
+            return false;
         }
     }
 
