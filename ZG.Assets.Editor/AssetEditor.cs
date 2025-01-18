@@ -230,7 +230,7 @@ namespace ZG
                 fileName = fileName.ToLower();
                 
                 bool isAppendHashToName = AssetEditor.isAppendHashToName;
-                string assetName;
+                string assetName, assetPath;
                 AssetBundle assetBundle;
                 foreach (string assetBundleName in assetBundleNames)
                 {
@@ -240,11 +240,14 @@ namespace ZG
                     if (assetName == fileName)
                         continue;
 
-                    assetBundle = AssetBundle.LoadFromFile(Path.Combine(folder, assetBundleName));
+                    assetPath = Path.Combine(folder, assetBundleName);
+                    assetBundle = AssetBundle.LoadFromFile(assetPath);
                     assetBundleBuild.assetNames = assetBundle == null ? null : assetBundle.GetAllAssetNames();
 
                     if (assetBundle != null)
                         assetBundle.Unload(true);
+
+                    File.Delete(assetPath);
 
                     if (assetBundleBuild.assetNames == null || assetBundleBuild.assetNames.Length < 1)
                         continue;
@@ -322,11 +325,14 @@ namespace ZG
                     if (assetBundleBuilds != null && assetBundleBuilds.FindIndex(x => x.assetBundleName.ToLower() == assetName) != -1)
                         continue;
 
-                    assetBundle = AssetBundle.LoadFromFile(Path.Combine(path, assetBundleName));
+                    assetPath = Path.Combine(path, assetBundleName);
+                    assetBundle = AssetBundle.LoadFromFile(assetPath);
                     assetBundleBuild.assetNames = assetBundle == null ? null : assetBundle.GetAllAssetNames();
 
                     if (assetBundle != null)
                         assetBundle.Unload(true);
+
+                    File.Delete(assetPath);
 
                     if (assetBundleBuild.assetNames == null || assetBundleBuild.assetNames.Length < 1)
                         continue;
