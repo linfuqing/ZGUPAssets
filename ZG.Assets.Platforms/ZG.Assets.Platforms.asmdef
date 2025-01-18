@@ -1,0 +1,16 @@
+{
+    "name": "ZG.Assets.Platforms",
+    "rootNamespace": "",
+    "references": [
+        "GUID:38d5088b410fc4249bce1feefb7adf85"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
