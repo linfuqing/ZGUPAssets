@@ -313,9 +313,9 @@ namespace ZG
             }
             else
             {
-                path = AndroidAssetPacks.GetAssetPackPath(name);
+                this.path = AndroidAssetPacks.GetAssetPackPath(name);
 #if UNITY_ANDROID && !UNITY_EDITOR
-                if (string.IsNullOrEmpty(path))
+                if (string.IsNullOrEmpty(this.path))
                     AndroidAssetPacks.DownloadAssetPackAsync(new string[] { name }, __Callback);
                 else
 #endif
