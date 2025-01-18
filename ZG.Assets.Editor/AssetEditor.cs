@@ -234,13 +234,17 @@ namespace ZG
                 AssetBundle assetBundle;
                 foreach (string assetBundleName in assetBundleNames)
                 {
+                    assetPath = Path.Combine(folder, assetBundleName);
                     assetName = isAppendHashToName
                         ? AssetManager.RemoveHashFromAssetName(assetBundleName)
                         : assetBundleName;
                     if (assetName == fileName)
-                        continue;
+                    {
+                        File.Delete(assetPath);
 
-                    assetPath = Path.Combine(folder, assetBundleName);
+                        continue;
+                    }
+
                     assetBundle = AssetBundle.LoadFromFile(assetPath);
                     assetBundleBuild.assetNames = assetBundle == null ? null : assetBundle.GetAllAssetNames();
 
@@ -319,13 +323,18 @@ namespace ZG
                 AssetBundle assetBundle;
                 foreach (string assetBundleName in assetBundleNames)
                 {
+                    assetPath = Path.Combine(path, assetBundleName);
+
                     assetName = isAppendHashToName
                         ? AssetManager.RemoveHashFromAssetName(assetBundleName)
                         : assetBundleName;
                     if (assetBundleBuilds != null && assetBundleBuilds.FindIndex(x => x.assetBundleName.ToLower() == assetName) != -1)
-                        continue;
+                    {
+                        File.Delete(assetPath);
 
-                    assetPath = Path.Combine(path, assetBundleName);
+                        continue;
+                    }
+
                     assetBundle = AssetBundle.LoadFromFile(assetPath);
                     assetBundleBuild.assetNames = assetBundle == null ? null : assetBundle.GetAllAssetNames();
 
