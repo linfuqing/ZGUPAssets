@@ -226,8 +226,8 @@ namespace ZG
 
         public struct DefaultAssetPack : IAssetPack
         {
-            public readonly bool HasPathOfHeader;
             public readonly string Path;
+            public readonly string Directory;
 
             public bool isDone => true;
 
@@ -238,12 +238,12 @@ namespace ZG
                 return packName == DefaultAssetPackHeader.NAME;
             }
 
-            public IAssetPackHeader header => new DefaultAssetPackHeader(HasPathOfHeader ? Path + FILE_SUFFIX_ASSET_PACKAGE : null);
+            public IAssetPackHeader header => new DefaultAssetPackHeader(string.IsNullOrEmpty(Path) ? null : Path + FILE_SUFFIX_ASSET_PACKAGE);
 
-            public DefaultAssetPack(bool hasPathOfHeader, string path)
+            public DefaultAssetPack(string path, string directory)
             {
-                HasPathOfHeader = hasPathOfHeader;
                 Path = path;
+                Directory = directory;
             }
 
             public bool GetFileInfo(
@@ -251,7 +251,8 @@ namespace ZG
                 out ulong fileOffset, 
                 out string filePath)
             {
-                filePath = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(Path), System.IO.Path.GetFileName(name));
+                filePath = string.IsNullOrEmpty(Directory) ? name : 
+                    System.IO.Path.Combine(Directory, System.IO.Path.GetFileName(name));
                 fileOffset = 0;
 
                 return true;
@@ -920,6 +921,7 @@ namespace ZG
             int numAssets = 0, assetCount, assetIndex, i;
             ulong minSize = ulong.MaxValue, size = 0, startBytes;
             IAssetPack pack;
+            IAssetPackHeader packHeader;
             AssetData destination;
             Asset source;
             KeyValuePair<string, Asset> asset;
@@ -930,6 +932,8 @@ namespace ZG
                 folder = result.Key;
                 pack = result.Value.Item1;
                 packAssets = result.Value.Item3;
+
+                packHeader = null;
 
                 assets.Clear();
                 assets.AddRange(packAssets);
@@ -957,7 +961,10 @@ namespace ZG
 
                         minSize = Math.Min(minSize, destination.info.size);
 
-                        size += destination.info.size;
+                        if(pack == null)
+                            size += destination.info.size;
+                        else if (packHeader == null)
+                            packHeader = pack.header;
                     }
                     else
                     {
@@ -980,6 +987,14 @@ namespace ZG
                         folderAssetStartBytes = new Dictionary<string, ulong>();
 
                     folderAssetStartBytes.Add(result.Key ?? string.Empty, startBytes);
+                }
+
+                if (packHeader != null)
+                {
+                    while (!packHeader.isDone)
+                        yield return null;
+
+                    size += packHeader.fileSize;
                 }
             }
 
@@ -1064,7 +1079,6 @@ namespace ZG
             ulong totalBytesDownload = 0, downloadedBytes, fileOffset, packSize, packDownloadedBytes, oldPackDownloadedBytes;
             long responseCode;
             string fileName, url, fullURL, packName, filePath;
-            IAssetPackHeader packHeader;
             Exception exception;
             (ulong, string) fileOffsetAndPath;
             Writer writer;
@@ -1127,68 +1141,85 @@ namespace ZG
 
                         if (folderAssetStartBytes != null && folderAssetStartBytes.TryGetValue(folder, out startBytes))
                         {
-                            if (preallocatedBuffer == null)
-                                preallocatedBuffer = new byte[minSize];
-
-                            using (var downloadFileHandler = new DownloadFileHandler(preallocatedBuffer))
+                            if (pack == null)
                             {
-                                if (pack == null)
+                                fullURL += FILE_SUFFIX_ASSET_PACKAGE;
+
+                                if (preallocatedBuffer == null)
+                                    preallocatedBuffer = new byte[minSize];
+
+                                using (var downloadFileHandler = new DownloadFileHandler(preallocatedBuffer))
+                                using (var www = new UnityWebRequest(fullURL, UnityWebRequest.kHttpVerbGET,
+                                           downloadFileHandler, null))
                                 {
-                                    fullURL += FILE_SUFFIX_ASSET_PACKAGE;
+                                    //downloadFileHandler.Clear();
 
-                                    using (var www = new UnityWebRequest(fullURL, UnityWebRequest.kHttpVerbGET, downloadFileHandler, null))
+                                    www.SetRequestHeader("Range", $"bytes={startBytes}-");
+
+                                    www.SendWebRequest();
+
+                                    do
                                     {
-                                        //downloadFileHandler.Clear();
+                                        yield return null;
 
-                                        www.SetRequestHeader("Range", $"bytes={startBytes}-");
+                                        responseCode = www.responseCode;
+                                    } while (responseCode == -1);
 
-                                        www.SendWebRequest();
+                                    downloadFileHandler.Init(
+                                        responseCode == 206 ? 0 : startBytes,
+                                        //responseCode == 206 ? startBytes : 0,
+                                        AssetPack
+                                            .Default, //string.IsNullOrEmpty(filePath) ? null : filePath + FILE_SUFFIX_ASSET_PACKAGE,
+                                        assets,
+                                        writer);
 
-                                        do
+                                    if (handler == null)
+                                        yield return www;
+                                    else
+                                    {
+                                        while (!www.isDone)
                                         {
                                             yield return null;
 
-                                            responseCode = www.responseCode;
-                                        } while (responseCode == -1);
+                                            downloadedBytes = downloadFileHandler.bytesDownloaded;
 
-                                        downloadFileHandler.Init(
-                                            responseCode == 206 ? 0 : startBytes,
-                                            //responseCode == 206 ? startBytes : 0,
-                                            AssetPack.Default, //string.IsNullOrEmpty(filePath) ? null : filePath + FILE_SUFFIX_ASSET_PACKAGE,
-                                            assets,
-                                            writer);
-
-                                        if (handler == null)
-                                            yield return www;
-                                        else
-                                        {
-                                            while (!www.isDone)
-                                            {
-                                                yield return null;
-
-                                                downloadedBytes = downloadFileHandler.bytesDownloaded;
-
-                                                handler(
-                                                    downloadFileHandler.assetName,
-                                                    downloadFileHandler.assetProgress,
-                                                    (uint)downloadedBytes,
-                                                    totalBytesDownload + downloadFileHandler.fileBytesDownloaded + downloadedBytes,
-                                                    size,
-                                                    totalAssetIndex + downloadFileHandler.assetCount,
-                                                    numAssets);
-                                            }
+                                            handler(
+                                                downloadFileHandler.assetName,
+                                                downloadFileHandler.assetProgress,
+                                                (uint)downloadedBytes,
+                                                totalBytesDownload + downloadFileHandler.fileBytesDownloaded +
+                                                downloadedBytes,
+                                                size,
+                                                totalAssetIndex + downloadFileHandler.assetCount,
+                                                numAssets);
                                         }
                                     }
+
+                                    assetIndex = downloadFileHandler.assetCount;
+                                    totalAssetIndex += assetIndex;
+                                    totalBytesDownload += downloadFileHandler.fileBytesDownloaded;
+                                }
+                            }
+                            else
+                            {
+                                filePath = packHeader.filePath;
+
+                                if (string.IsNullOrEmpty(filePath))
+                                {
+                                    assetIndex = 0;//assets.assetCount;
+                                    /*totalAssetIndex += assetIndex;
+                                    totalBytesDownload += downloadFileHandler.fileBytesDownloaded;*/
                                 }
                                 else
                                 {
-                                    filePath = packHeader.filePath;
+                                    if (preallocatedBuffer == null)
+                                        preallocatedBuffer = new byte[minSize];
 
-                                    if (!string.IsNullOrEmpty(filePath))
+                                    using (var downloadFileHandler = new DownloadFileHandler(preallocatedBuffer))
                                     {
                                         downloadFileHandler.Init(
                                             0,
-                                            new AssetPack(packName, filePath, startBytes), 
+                                            new AssetPack(packName, filePath, startBytes),
                                             assets,
                                             writer);
 
@@ -1199,15 +1230,18 @@ namespace ZG
                                         {
                                             yield return null;
 
-                                            packDownloadedBytes = (ulong)Math.Round(packSize * (double)pack.downloadProgress);
+                                            packDownloadedBytes =
+                                                (ulong)Math.Round(packSize * (double)pack.downloadProgress);
 
 #if ASSET_MANAGER_USE_TASK
                                             using (var task = Task.Run(() =>
-                                             {
+                                                   {
 #endif
-                                                 isDownloading = downloadFileHandler.ReceiveData((int)(packDownloadedBytes - oldPackDownloadedBytes));
+                                                       isDownloading =
+                                                           downloadFileHandler.ReceiveData(
+                                                               (int)(packDownloadedBytes - oldPackDownloadedBytes));
 #if ASSET_MANAGER_USE_TASK
-                                             }))
+                                                   }))
                                             {
 
                                                 do
@@ -1215,7 +1249,7 @@ namespace ZG
 
                                                     yield return null;
 #endif
-                                                    
+
                                                     if (handler != null)
                                                     {
                                                         downloadedBytes = downloadFileHandler.bytesDownloaded;
@@ -1224,7 +1258,9 @@ namespace ZG
                                                             downloadFileHandler.assetName,
                                                             downloadFileHandler.assetProgress,
                                                             (uint)downloadedBytes,
-                                                            totalBytesDownload + downloadFileHandler.fileBytesDownloaded + downloadedBytes,
+                                                            totalBytesDownload +
+                                                            downloadFileHandler.fileBytesDownloaded +
+                                                            downloadedBytes,
                                                             size,
                                                             totalAssetIndex + downloadFileHandler.assetCount,
                                                             numAssets);
@@ -1245,12 +1281,12 @@ namespace ZG
 
                                             oldPackDownloadedBytes = packDownloadedBytes;
                                         } while (isDownloading);
+                                        
+                                        assetIndex = downloadFileHandler.assetCount;
+                                        totalAssetIndex += assetIndex;
+                                        totalBytesDownload += downloadFileHandler.fileBytesDownloaded;
                                     }
                                 }
-
-                                assetIndex = downloadFileHandler.assetCount;
-                                totalAssetIndex += assetIndex;
-                                totalBytesDownload += downloadFileHandler.fileBytesDownloaded;
                             }
 
                             //GarbageCollector.CollectIncremental();
@@ -1374,57 +1410,81 @@ namespace ZG
                                 ++totalAssetIndex;
                             }
                         }
-                        else if (assetIndex < assetCount)
+                        else
                         {
                             while (!pack.isDone)
-                                yield return null;
-
-                            if (fileOffsetsAndPaths == null)
-                                fileOffsetsAndPaths = new Dictionary<string, (ulong, string)>();
-                            else
-                                fileOffsetsAndPaths.Clear();
-
-                            for (i = assetIndex; i < assetCount; ++i)
                             {
-                                asset = assets[i];
+                                if (handler != null)
+                                {
+                                    try
+                                    {
+                                        packDownloadedBytes = (ulong)Math.Round(packSize * pack.downloadProgress);
 
-                                assetName = asset.Key;
-                                if (!pack.GetFileInfo(GetFilePath(assetName, asset.Value.data.info.fileName), out fileOffset, out filePath))
-                                    continue;
+                                        handler(
+                                            packName,
+                                            pack.downloadProgress,
+                                            (uint)packDownloadedBytes,
+                                            totalBytesDownload + packDownloadedBytes,
+                                            size,
+                                            totalAssetIndex,
+                                            numAssets);
+                                    }
+                                    catch (Exception e)
+                                    {
+                                        Debug.LogError(e.InnerException ?? e);
+                                    }
+                                }
 
-                                fileOffsetsAndPaths.Add(assetName, (fileOffset, filePath));
+                                yield return null;
                             }
 
-                            //filePath = Path.GetDirectoryName(filePath);
+                            totalBytesDownload += packSize;
 
-                            do
+                            if (assetIndex < assetCount)
                             {
-                                assetName = null;
-                                destination = default;
+                                if (fileOffsetsAndPaths == null)
+                                    fileOffsetsAndPaths = new Dictionary<string, (ulong, string)>();
+                                else
+                                    fileOffsetsAndPaths.Clear();
 
-                                downloadedBytes = 0;
+                                for (i = assetIndex; i < assetCount; ++i)
+                                {
+                                    asset = assets[i];
 
-                                packDownloadedBytes = packSize > 0 ? (ulong)Math.Round(packSize * pack.downloadProgress) : ulong.MaxValue;
-                                
+                                    assetName = asset.Key;
+                                    if (!pack.GetFileInfo(GetFilePath(assetName, asset.Value.data.info.fileName),
+                                            out fileOffset, out filePath))
+                                        continue;
+
+                                    fileOffsetsAndPaths.Add(assetName, (fileOffset, filePath));
+                                }
+
+                                //filePath = Path.GetDirectoryName(filePath);
+
+                                do
+                                {
+                                    assetName = null;
+                                    destination = default;
+
 #if ASSET_MANAGER_USE_TASK
-                                using (var task = Task.Run(() =>
-                                     {
+                                    using (var task = Task.Run(() =>
+                                           {
 #endif
-                                         while (assetIndex < assetCount)
-                                         {
-                                             asset = assets[assetIndex];
+                                               while (assetIndex < assetCount)
+                                               {
+                                                   asset = assets[assetIndex];
 
-                                             assetName = asset.Key;
-                                                 
+                                                   assetName = asset.Key;
+
 #if !ASSET_MANAGER_USE_TASK
                                              try
                                              {
-                                                 if (handler != null)
+                                                 if (!isHandler && handler != null)
                                                      handler(
                                                          assetName,
-                                                         pack.downloadProgress,
-                                                         (uint)downloadedBytes,
-                                                         Math.Min(totalBytesDownload + downloadedBytes, packDownloadedBytes),
+                                                         1.0f, //pack.downloadProgress,
+                                                         (uint)packSize,
+                                                         totalBytesDownload,
                                                          size,
                                                          totalAssetIndex,
                                                          numAssets);
@@ -1434,103 +1494,68 @@ namespace ZG
                                                  Debug.LogError(e.InnerException ?? e);
                                              }
 #endif
-                                             
-                                             if (!fileOffsetsAndPaths.TryGetValue(assetName, out fileOffsetAndPath))
-                                             {
-                                                 Debug.LogError($"Asset pack {assetName} can not been found!");
 
-                                                 break;
-                                             }
+                                                   if (!fileOffsetsAndPaths.TryGetValue(assetName,
+                                                           out fileOffsetAndPath))
+                                                   {
+                                                       Debug.LogError($"Asset pack {assetName} can not been found!");
 
-                                             fileOffset = fileOffsetAndPath.Item1;
+                                                       break;
+                                                   }
 
-                                             while (fileOffset > packDownloadedBytes)
-                                                 downloadedBytes = 0;
+                                                   fileOffset = fileOffsetAndPath.Item1;
 
-                                             destination = asset.Value.data;
+                                                   destination = asset.Value.data;
 
-                                             if (packDownloadedBytes > fileOffset)
-                                             {
-                                                 do
-                                                 {
-                                                     downloadedBytes = Math.Min(packDownloadedBytes - fileOffset, destination.info.size);
+                                                   destination.pack = new AssetPack(packName, fileOffsetAndPath.Item2,
+                                                       fileOffset);
 
-                                                 } while (downloadedBytes < destination.info.size);
-                                             }
+                                                   writer.Write(assetName, destination);
 
-                                             destination.pack = new AssetPack(packName, fileOffsetAndPath.Item2, fileOffset);
+                                                   //totalBytesDownload += destination.info.size;
 
-                                             writer.Write(assetName, destination);
+                                                   ++totalAssetIndex;
 
-                                             totalBytesDownload += destination.info.size;
-
-                                             ++totalAssetIndex;
-
-                                             ++assetIndex;
-                                         }
+                                                   ++assetIndex;
+                                               }
 #if ASSET_MANAGER_USE_TASK
-                                     }))
-                                {
-                                    do
+                                           }))
                                     {
-                                        yield return null;
-
-                                        packDownloadedBytes = packSize > 0 ? (ulong)Math.Round(packSize * pack.downloadProgress) : ulong.MaxValue;
-
-                                        try
+                                        do
                                         {
-                                            if (handler != null)
-                                                handler(
-                                                    assetName,
-                                                    pack.downloadProgress,
-                                                    (uint)downloadedBytes,
-                                                    Math.Min(totalBytesDownload + downloadedBytes, packDownloadedBytes),
-                                                    size,
-                                                    totalAssetIndex,
-                                                    numAssets);
-                                        }
-                                        catch (Exception e)
-                                        {
-                                            Debug.LogError(e.InnerException ?? e);
-                                        }
+                                            yield return null;
 
-                                        exception = task.Exception;
-                                        if (exception != null)
-                                        {
-                                            Debug.LogException(exception.InnerException ?? exception);
+                                            try
+                                            {
+                                                if (handler != null)
+                                                    handler(
+                                                        assetName,
+                                                        1.0f, //pack.downloadProgress,
+                                                        (uint)packSize,
+                                                        totalBytesDownload,
+                                                        size,
+                                                        totalAssetIndex,
+                                                        numAssets);
+                                            }
+                                            catch (Exception e)
+                                            {
+                                                Debug.LogError(e.InnerException ?? e);
+                                            }
 
+                                            exception = task.Exception;
+                                            if (exception != null)
+                                            {
+                                                Debug.LogException(exception.InnerException ?? exception);
+
+                                                break;
+                                            }
+                                        } while (!task.IsCompleted);
+
+                                        if (exception == null && !isForce)
                                             break;
-                                        }
-                                    } while (!task.IsCompleted);
-
-                                    if (exception == null && !isForce)
-                                        break;
-                                }
+                                    }
 #endif
-                            } while (assetIndex < assetCount);
-                        }
-                        else
-                        {
-                            while(!pack.isDone)
-                            {
-                                yield return null;
-
-                                try
-                                {
-                                    if (handler != null)
-                                        handler(
-                                            null,
-                                            pack.downloadProgress,
-                                            0,
-                                            Math.Min(totalBytesDownload, (ulong)Math.Round(packSize * pack.downloadProgress)),
-                                            size,
-                                            totalAssetIndex,
-                                            numAssets);
-                                }
-                                catch (Exception e)
-                                {
-                                    Debug.LogError(e.InnerException ?? e);
-                                }
+                                } while (assetIndex < assetCount);
                             }
                         }
                     }

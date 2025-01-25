@@ -67,7 +67,7 @@ namespace ZG
                 using (var reader = File.OpenRead(path))
                 using (var writer = File.OpenWrite(targetPath))
                 {
-                    ulong offset = 0, step;
+                    ulong step;
                     byte[] bytes = null;
 
                     reader.Position = (long)offset;
@@ -110,10 +110,22 @@ namespace ZG
         public readonly string Name;
         public readonly GetAssetPackStateAsyncOperation Operation;
 
+#if DEBUG
+        private bool __isDone;
+#endif
+
         public bool isDone
         {
             get
             {
+#if DEBUG
+                if (!__isDone)
+                {
+                    __isDone = true;
+
+                    return false;
+                }
+#endif
                 return Operation == null || Operation.isDone;
             }
         }
@@ -126,7 +138,12 @@ namespace ZG
             }
         }
 
-        public string filePath => null;
+        public string filePath
+        {
+            get;
+
+            internal set;
+        }
 
         public string name => GetName(Name);
 
@@ -151,11 +168,24 @@ namespace ZG
         private AndroidAssetPackHeader __header;
 
         private static DownloadAssetPackAsyncOperation __operation;
-
+        
+#if DEBUG
+        private bool __isDone;
+#endif
+        
         public bool isDone
         {
             get
             {
+#if DEBUG
+                if (!__isDone)
+                {
+                    __isDone = true;
+
+                    return false;
+                }
+#endif
+                
                 if (!__WaitingUserConfirmationOperation())
                     return false;
 
@@ -209,6 +239,7 @@ namespace ZG
             {
                 if (__header == null)
                 {
+                    GetAssetPackStateAsyncOperation operation = null;
                     if (Type == AndroidAssetPackType.InstallTime)
                     {
                         Debug.Log("Begin GetCoreUnityAssetPackNames");
@@ -218,15 +249,22 @@ namespace ZG
                         if (coreUnityAssetPackNames != null && coreUnityAssetPackNames.Length > 0)
                         {
                             Debug.Log("Begin GetAssetPackStateAsync");
-                            __header = new AndroidAssetPackHeader(Name, AndroidAssetPacks.GetAssetPackStateAsync(coreUnityAssetPackNames));
+                            operation = AndroidAssetPacks.GetAssetPackStateAsync(coreUnityAssetPackNames);
                             Debug.Log("End GetAssetPackStateAsync");
                         }
                     }
                     else
                     {
                         Debug.Log($"Begin GetAssetPackStateAsync {Name}");
-                        __header = new AndroidAssetPackHeader(Name, AndroidAssetPacks.GetAssetPackStateAsync(new string[] { Name }));
+                        operation = AndroidAssetPacks.GetAssetPackStateAsync(new string[] { Name });
                         Debug.Log("End GetAssetPackStateAsync");
+                    }
+
+                    if (operation != null)
+                    {
+                        __header = new AndroidAssetPackHeader(Name, operation);
+
+                        __header.filePath = path;
                     }
                 }
 
@@ -316,7 +354,11 @@ namespace ZG
                 this.path = AndroidAssetPacks.GetAssetPackPath(name);
 #if UNITY_ANDROID && !UNITY_EDITOR
                 if (string.IsNullOrEmpty(this.path))
+                {
+                    Debug.Log($"DownloadAssetPackAsync {name}");
+
                     AndroidAssetPacks.DownloadAssetPackAsync(new string[] { name }, __Callback);
+                }
                 else
 #endif
                 {
@@ -364,6 +406,9 @@ namespace ZG
 
         private void __Callback(AndroidAssetPackInfo androidAssetPackInfo)
         {
+            Debug.Log(
+                $"DownloadingAssetPackAsync {androidAssetPackInfo.name} : {androidAssetPackInfo.status} : {androidAssetPackInfo.size} : {androidAssetPackInfo.transferProgress} : {androidAssetPackInfo.bytesDownloaded}");
+
             var error = androidAssetPackInfo.error;
             if (error != AndroidAssetPackError.NoError)
                 Debug.LogError(error);
@@ -375,7 +420,8 @@ namespace ZG
                     case AndroidAssetPackStatus.Downloading:
                     case AndroidAssetPackStatus.Transferring:
 
-                        downloadProgress = androidAssetPackInfo.transferProgress;
+                        downloadProgress = androidAssetPackInfo.transferProgress * 0.1f +
+                                           androidAssetPackInfo.bytesDownloaded * 0.9f / androidAssetPackInfo.size;
                         break;
                     case AndroidAssetPackStatus.Completed:
                         downloadProgress = 1.0f;
@@ -383,6 +429,9 @@ namespace ZG
                         size = androidAssetPackInfo.size;
                         
                         path = AndroidAssetPacks.GetAssetPackPath(Name);
+
+                        if (__header != null)
+                            __header.filePath = path;
 
                         break;
                     case AndroidAssetPackStatus.WaitingForWifi:
@@ -489,12 +538,20 @@ namespace ZG
         {
             if(packs != null)
             {
-                Factory factory;
+                IAssetPackFactory factory;
                 foreach (var pack in packs)
                 {
+#if UNITY_ANDROID && !UNITY_EDITOR
                     factory = new Factory(pack.type, pack.isOverridePath, pack.packPath, pack.name);
                     foreach(var filePath in pack.filePaths)
                         AssetUtility.Register(filePath, factory);
+#else
+                    foreach (var filePath in pack.filePaths)
+                    {
+                        factory = new AssetPackManager.Factory(new AssetPackManager.Pack(false, filePath, null));
+                        AssetUtility.Register(filePath, factory);
+                    }
+#endif
                 }
             }
         }

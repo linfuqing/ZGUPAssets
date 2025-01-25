@@ -7,14 +7,25 @@ namespace ZG
         [System.Serializable]
         public struct Pack
         {
-            public bool hasPathOfHeader;
-
+            public bool hasHeader;
+            
             public string path;
 
-            public IAssetPack Retrieve() => new AssetManager.DefaultAssetPack(hasPathOfHeader, path);
+            public string directory;
+
+            public Pack(bool hasHeader, string path, string directory)
+            {
+                this.hasHeader = hasHeader;
+                this.path = path;
+                this.directory = directory;
+            }
+
+            public IAssetPack Retrieve() => new AssetManager.DefaultAssetPack(
+                hasHeader ? path : null, 
+                string.IsNullOrEmpty(directory) ?System.IO.Path.GetDirectoryName(path) : directory);
         }
 
-        private struct Factory : IAssetPackFactory
+        public struct Factory : IAssetPackFactory
         {
             public readonly Pack Pack;
 
