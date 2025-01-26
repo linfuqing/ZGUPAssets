@@ -374,9 +374,7 @@ namespace ZG
                 $"DownloadingAssetPackAsync {androidAssetPackInfo.name} : {androidAssetPackInfo.status} : {androidAssetPackInfo.size} : {androidAssetPackInfo.transferProgress} : {androidAssetPackInfo.bytesDownloaded}");
 
             var error = androidAssetPackInfo.error;
-            if (error != AndroidAssetPackError.NoError)
-                Debug.LogError(error);
-            else
+            if (AndroidAssetPackError.NoError == error)
             {
                 switch (status = androidAssetPackInfo.status)
                 {
@@ -412,6 +410,14 @@ namespace ZG
 
                         break;
                 }
+            }
+            else
+            {
+                Debug.LogError(error);
+
+                string packName = androidAssetPackInfo.name;
+                packName = string.IsNullOrEmpty(packName) ? Name : packName;
+                AndroidAssetPacks.DownloadAssetPackAsync(new string[] { packName }, __Callback);
             }
 
         }
