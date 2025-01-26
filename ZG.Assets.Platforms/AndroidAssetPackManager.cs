@@ -110,22 +110,11 @@ namespace ZG
         public readonly string Name;
         public readonly GetAssetPackStateAsyncOperation Operation;
 
-#if DEBUG
-        private bool __isDone;
-#endif
 
         public bool isDone
         {
             get
             {
-#if DEBUG
-                if (!__isDone)
-                {
-                    __isDone = true;
-
-                    return false;
-                }
-#endif
                 return Operation == null || Operation.isDone;
             }
         }
@@ -169,23 +158,10 @@ namespace ZG
 
         private static DownloadAssetPackAsyncOperation __operation;
         
-#if DEBUG
-        private bool __isDone;
-#endif
-        
         public bool isDone
         {
             get
             {
-#if DEBUG
-                if (!__isDone)
-                {
-                    __isDone = true;
-
-                    return false;
-                }
-#endif
-                
                 if (!__WaitingUserConfirmationOperation())
                     return false;
 
@@ -264,7 +240,7 @@ namespace ZG
                     {
                         __header = new AndroidAssetPackHeader(Name, operation);
 
-                        __header.filePath = path;
+                        //__header.filePath = path;
                     }
                 }
 
@@ -351,21 +327,9 @@ namespace ZG
             }
             else
             {
-                this.path = AndroidAssetPacks.GetAssetPackPath(name);
-#if UNITY_ANDROID && !UNITY_EDITOR
-                if (string.IsNullOrEmpty(this.path))
-                {
-                    Debug.Log($"DownloadAssetPackAsync {name}");
+                Debug.Log($"DownloadAssetPackAsync {name}");
 
-                    AndroidAssetPacks.DownloadAssetPackAsync(new string[] { name }, __Callback);
-                }
-                else
-#endif
-                {
-                    downloadProgress = 1.0f;
-
-                    status = AndroidAssetPackStatus.Completed;
-                }
+                AndroidAssetPacks.DownloadAssetPackAsync(new string[] { name }, __Callback);
 
                 AssetUtility.Register(AndroidAssetPackHeader.GetName(name), this);
             }
@@ -430,8 +394,8 @@ namespace ZG
                         
                         path = AndroidAssetPacks.GetAssetPackPath(Name);
 
-                        if (__header != null)
-                            __header.filePath = path;
+                        /*if (__header != null)
+                            __header.filePath = path;*/
 
                         break;
                     case AndroidAssetPackStatus.WaitingForWifi:
