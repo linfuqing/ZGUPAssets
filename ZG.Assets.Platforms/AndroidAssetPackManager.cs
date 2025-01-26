@@ -327,9 +327,19 @@ namespace ZG
             }
             else
             {
-                Debug.Log($"DownloadAssetPackAsync {name}");
+                this.path = AndroidAssetPacks.GetAssetPackPath(name);
+                if (string.IsNullOrEmpty(path))
+                {
+                    Debug.Log($"DownloadAssetPackAsync {name}");
 
-                AndroidAssetPacks.DownloadAssetPackAsync(new string[] { name }, __Callback);
+                    AndroidAssetPacks.DownloadAssetPackAsync(new string[] { name }, __Callback);
+                }
+                else
+                {
+                    downloadProgress = 1.0f;
+
+                    status = AndroidAssetPackStatus.Completed;
+                }
 
                 AssetUtility.Register(AndroidAssetPackHeader.GetName(name), this);
             }
