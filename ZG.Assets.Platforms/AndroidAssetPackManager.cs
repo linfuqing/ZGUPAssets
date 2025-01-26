@@ -236,12 +236,9 @@ namespace ZG
                         Debug.Log("End GetAssetPackStateAsync");
                     }
 
-                    if (operation != null)
-                    {
-                        __header = new AndroidAssetPackHeader(Name, operation);
+                    __header = new AndroidAssetPackHeader(Name, operation);
 
-                        //__header.filePath = path;
-                    }
+                    //__header.filePath = path;
                 }
 
                 return __header;
@@ -278,8 +275,8 @@ namespace ZG
         {
             fileOffset = 0;
             
-            string path = GetLocationPath(IsOverridePath, Path, name), temp = __TryGetFilepath(path);
-            if (temp == null)
+            string path = GetLocationPath(IsOverridePath, Path, name);
+            if (__TryGetFilepath(path) == null)
             {
                 filePath = null;
 
@@ -303,6 +300,8 @@ namespace ZG
 
             if (type == AndroidAssetPackType.InstallTime)
             {
+                this.path = Application.streamingAssetsPath;
+
                 if (__operation == null)
                 {
                     Debug.Log("Begin GetCoreUnityAssetPackNames");
@@ -368,7 +367,7 @@ namespace ZG
         private string __TryGetFilepath(string filePath)
         {
             string path = string.IsNullOrEmpty(this.path) ? null : System.IO.Path.Combine(this.path, filePath);
-            if (string.IsNullOrEmpty(path) || !File.Exists(path))
+            if (string.IsNullOrEmpty(path) || Type != AndroidAssetPackType.InstallTime && !File.Exists(path))
             {
                 Debug.LogError($"Get Asset Location Failed: {status}, {Name} : {filePath}, {path}");
 
@@ -526,10 +525,19 @@ namespace ZG
                     foreach(var filePath in pack.filePaths)
                         AssetUtility.Register(filePath, factory);
 #else
-                    foreach (var filePath in pack.filePaths)
+                    if (pack.type == AndroidAssetPackType.InstallTime)
                     {
-                        factory = new AssetPackManager.Factory(new AssetPackManager.Pack(false, filePath, null));
-                        AssetUtility.Register(filePath, factory);
+                        factory = new Factory(pack.type, pack.isOverridePath, pack.packPath, pack.name);
+                        foreach (var filePath in pack.filePaths)
+                            AssetUtility.Register(filePath, factory);
+                    }
+                    else
+                    {
+                        foreach (var filePath in pack.filePaths)
+                        {
+                            factory = new AssetPackManager.Factory(new AssetPackManager.Pack(false, filePath, null));
+                            AssetUtility.Register(filePath, factory);
+                        }
                     }
 #endif
                 }

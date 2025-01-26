@@ -1125,7 +1125,7 @@ namespace ZG
                         {
                             packSize = 0;
 
-                            packName = null;
+                            packName = folder;
                         }
                         else
                         {
@@ -1202,7 +1202,7 @@ namespace ZG
                             }
                             else
                             {
-                                filePath = packHeader.filePath;
+                                filePath = packHeader?.filePath;
 
                                 if (string.IsNullOrEmpty(filePath))
                                 {
