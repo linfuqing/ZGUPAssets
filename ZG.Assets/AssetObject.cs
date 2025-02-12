@@ -69,7 +69,7 @@ namespace ZG
 
             foreach (var assetPath in assetPaths)
             {
-                if (System.IO.Path.GetFileName(assetPath) == name)
+                if (System.IO.Path.GetFileNameWithoutExtension(assetPath) == name)
                 {
                     __target = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(assetPath);
 
