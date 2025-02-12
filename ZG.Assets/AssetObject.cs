@@ -64,6 +64,30 @@ namespace ZG
 
         protected void OnEnable()
         {
+#if UNITY_EDITOR
+            var assetPaths = UnityEditor.AssetDatabase.GetAssetPathsFromAssetBundle(fileName);
+
+            foreach (var assetPath in assetPaths)
+            {
+                if (System.IO.Path.GetFileName(assetPath) == name)
+                {
+                    __target = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(assetPath);
+
+                    if (__target != null)
+                    {
+                        var transform = this.transform;
+                        __target = space == Space.World ? Instantiate(
+                                __target, 
+                                transform.position, 
+                                transform.rotation) : 
+                            Instantiate(__target, transform);
+
+                        return;
+                    }
+                }
+            }
+#endif
+            
             __loader = new AssetBundleLoader<GameObject>(fileName, name, assetManager);
 
             StartCoroutine(__Load());
