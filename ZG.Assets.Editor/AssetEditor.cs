@@ -509,6 +509,76 @@ namespace ZG
             }
         }
 
+        [MenuItem("Assets/ZG/Assets/Build Folder To Bundle")]
+        public static void BuildFolderToBundle()
+        {
+            string path = EditorUtility.SaveFilePanel("Save Bundle", EditorPrefs.GetString(PATH), string.Empty, string.Empty);
+            if (!string.IsNullOrEmpty(path))
+            {
+                EditorPrefs.SetString(PATH, path);
+
+                string dataPath = Application.dataPath;
+                dataPath = dataPath.Remove(dataPath.Length - 6, 6);
+
+                BuildTarget buildTarget = (BuildTarget)Enum.Parse(typeof(BuildTarget), EditorPrefs.GetString(BUILD_TARGET));
+                string assetPath, targetPath;
+                TextAsset  textAsset;
+                UnityEngine.Object[] assets = Selection.GetFiltered(typeof(UnityEngine.Object), SelectionMode.DeepAssets);
+                List<string> assetNames = new List<string>();
+                foreach (var asset in assets)
+                {
+                    assetPath = AssetDatabase.GetAssetPath(asset);
+                    if(AssetDatabase.IsValidFolder(assetPath))
+                        continue;
+
+                    if (asset is DefaultAsset)
+                    {
+                        targetPath = assetPath + ".bytes";
+                        AssetDatabase.MoveAsset(assetPath, targetPath);
+                        
+                        assetPath = targetPath;
+                    }
+
+                    assetNames.Add(assetPath);
+                }
+                
+                AssetDatabase.SaveAssets();
+
+                AssetBundleBuild assetBundleBuild = new AssetBundleBuild();
+
+                assetBundleBuild.assetBundleName = Path.GetFileName(path);
+                assetBundleBuild.assetNames = assetNames.ToArray();
+
+                var folder = Path.GetDirectoryName(path);
+                var assetBundle = AssetBundle.LoadFromFile(Path.Combine(folder, Path.GetFileName(folder)));
+                var source = assetBundle == null ? null : assetBundle.LoadAsset<AssetBundleManifest>("assetBundleManifest");
+
+                //AssetDatabase.SaveAssets();
+                //AssetDatabase.Refresh();
+                AssetDatabase.Refresh(ImportAssetOptions.ForceUpdate | ImportAssetOptions.ImportRecursive);
+                var buildAssetBundleOptions = AssetEditor.buildAssetBundleOptions;
+                var destination = BuildPipeline.BuildAssetBundles(
+                    folder, 
+                    new AssetBundleBuild[] { assetBundleBuild }, 
+                    buildAssetBundleOptions, 
+                    buildTarget);
+
+                uint version = AssetEditor.version;
+                AssetManager.UpdateAfterBuild(
+                    (buildAssetBundleOptions & BuildAssetBundleOptions.AppendHashToAssetBundleName) == BuildAssetBundleOptions.AppendHashToAssetBundleName, 
+                    source, 
+                    destination, 
+                    folder, 
+                    ref version);
+                AssetEditor.version = version;
+
+                if (assetBundle != null)
+                    assetBundle.Unload(true);
+
+                EditorUtility.RevealInFinder(folder);
+            }
+        }
+
         [MenuItem("Assets/ZG/Assets/Build All")]
         public static void BuildAll()
         {

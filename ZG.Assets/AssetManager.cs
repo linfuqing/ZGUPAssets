@@ -663,8 +663,9 @@ namespace ZG
 
         public bool GetAssetPath(string name, out Asset asset, out ulong fileOffset, out string filePath)
         {
-            if (!__assets.TryGetValue(name, out asset))
+            if (__assets == null || !__assets.TryGetValue(name, out asset))
             {
+                asset = default;
                 fileOffset = 0U;
                 filePath = null;
 

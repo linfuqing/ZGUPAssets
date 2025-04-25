@@ -526,6 +526,36 @@ namespace ZG
             }
         }
 
+        public IEnumerator Write(string name, IEnumerator enumerator)
+        {
+            if (__assets == null || !__assets.Remove(name, out var asset))
+                yield break;
+
+            bool isSaved = false;
+            var folder = Path.GetDirectoryName(name);
+            try
+            {
+                using (var writer = new Writer(folder, this))
+                    writer.Save();
+
+                isSaved = true;
+            }
+            catch (Exception e)
+            {
+                if (!isSaved)
+                    __assets[name] = asset;
+
+                throw e;
+            }
+
+            yield return enumerator;
+
+            asset.data.type = AssetType.UncompressedRuntime;
+            asset.data.pack = AssetPack.Default;
+            using (var writer = new Writer(folder, this))
+                writer.Write(name, asset.data);
+        }
+
         private bool __Delete(string name)
         {
             if (__assets == null)
