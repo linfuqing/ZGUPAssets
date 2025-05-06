@@ -1479,7 +1479,7 @@ namespace ZG
 #if !ASSET_MANAGER_USE_TASK
                                              try
                                              {
-                                                 if (!isHandler && handler != null)
+                                                 if (handler != null)
                                                      handler(
                                                          assetName,
                                                          1.0f, //pack.downloadProgress,

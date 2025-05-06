@@ -517,8 +517,8 @@ namespace ZG
             {
                 EditorPrefs.SetString(PATH, path);
 
-                string dataPath = Application.dataPath;
-                dataPath = dataPath.Remove(dataPath.Length - 6, 6);
+                //string dataPath = Application.dataPath;
+                //dataPath = dataPath.Remove(dataPath.Length - 6, 6);
 
                 BuildTarget buildTarget = (BuildTarget)Enum.Parse(typeof(BuildTarget), EditorPrefs.GetString(BUILD_TARGET));
                 string assetPath, targetPath;
