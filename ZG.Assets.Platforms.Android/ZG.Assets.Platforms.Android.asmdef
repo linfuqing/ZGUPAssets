@@ -1,10 +1,12 @@
 {
-    "name": "ZG.Assets.Platforms",
+    "name": "ZG.Assets.Platforms.Android",
     "rootNamespace": "",
     "references": [
         "GUID:38d5088b410fc4249bce1feefb7adf85"
     ],
-    "includePlatforms": [],
+    "includePlatforms": [
+        "Android"
+    ],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": false,
