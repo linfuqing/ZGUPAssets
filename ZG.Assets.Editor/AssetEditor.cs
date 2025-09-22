@@ -388,7 +388,7 @@ namespace ZG
                 BuildTarget buildTarget = (BuildTarget)Enum.Parse(typeof(BuildTarget), EditorPrefs.GetString(BUILD_TARGET));
                 int numFolderLength, numAssets, index;
                 string folder, extension, assetPath, subPath, assetBundleName;
-                UnityEngine.Object asset;
+                //UnityEngine.Object asset;
                 UnityEngine.Object[] assets;
                 List<string> assetNames;
                 Dictionary<string, List<string>> assetNameMap = null;
@@ -406,7 +406,7 @@ namespace ZG
                     numAssets = assets.Length;
                     for (int i = 0; i < numAssets; ++i)
                     {
-                        asset = assets[i];
+                        //asset = assets[i];
 
                         assetPath = AssetDatabase.GetAssetPath(assets[i]);
                         if (config != null && config.IsMask(buildTarget, AssetDatabase.LoadMainAssetAtPath(assetPath)))
@@ -447,42 +447,9 @@ namespace ZG
                     }
                 }
 
-                var assetBundleNames = AssetDatabase.GetAllAssetBundleNames();
-
-                foreach (var assetBundleNameToBuild in assetBundleNames)
-                {
-                    if (assetNameMap == null)
-                        assetNameMap = new Dictionary<string, List<string>>();
-
-                    if (!assetNameMap.TryGetValue(assetBundleNameToBuild, out assetNames))
-                    {
-                        assetNames = new List<string>();
-
-                        assetNameMap[assetBundleNameToBuild] = assetNames;
-                    }
-
-                    assetNames.AddRange(AssetDatabase.GetAssetPathsFromAssetBundle(assetBundleNameToBuild));
-                }
-
-                if (assetNameMap == null)
+                var assetBundleBuilds = __CreateAssetBundleBuilds(assetNameMap);
+                if (assetBundleBuilds == null)
                     return;
-
-                AssetBundleBuild assetBundleBuild = new AssetBundleBuild();
-                List<AssetBundleBuild> assetBundleBuilds = null;
-
-                foreach (var pair in assetNameMap)
-                {
-                    assetBundleName = pair.Key;
-                    assetNames = pair.Value;
-
-                    assetBundleBuild.assetBundleName = assetBundleName;
-                    assetBundleBuild.assetNames = assetNames.ToArray();
-
-                    if (assetBundleBuilds == null)
-                        assetBundleBuilds = new List<AssetBundleBuild>();
-
-                    assetBundleBuilds.Add(assetBundleBuild);
-                }
 
                 var assetBundle = AssetBundle.LoadFromFile(Path.Combine(assetFolder, Path.GetFileName(assetFolder)));
                 var source = assetBundle == null ? null : assetBundle.LoadAsset<AssetBundleManifest>("assetBundleManifest");
@@ -509,8 +476,8 @@ namespace ZG
             }
         }
 
-        [MenuItem("Assets/ZG/Assets/Build Folder To Bundle")]
-        public static void BuildFolderToBundle()
+        [MenuItem("Assets/ZG/Assets/Build All By Folder To Bundle")]
+        public static void BuildAllByFolderToBundle()
         {
             string path = EditorUtility.SaveFilePanel("Save Bundle", EditorPrefs.GetString(PATH), string.Empty, string.Empty);
             if (!string.IsNullOrEmpty(path))
@@ -522,7 +489,6 @@ namespace ZG
 
                 BuildTarget buildTarget = (BuildTarget)Enum.Parse(typeof(BuildTarget), EditorPrefs.GetString(BUILD_TARGET));
                 string assetPath, targetPath;
-                TextAsset  textAsset;
                 UnityEngine.Object[] assets = Selection.GetFiltered(typeof(UnityEngine.Object), SelectionMode.DeepAssets);
                 List<string> assetNames = new List<string>();
                 foreach (var asset in assets)
@@ -544,10 +510,9 @@ namespace ZG
                 
                 AssetDatabase.SaveAssets();
 
-                AssetBundleBuild assetBundleBuild = new AssetBundleBuild();
-
-                assetBundleBuild.assetBundleName = Path.GetFileName(path);
-                assetBundleBuild.assetNames = assetNames.ToArray();
+                var assetNameMap = new Dictionary<string, List<string>>();
+                assetNameMap[Path.GetFileName(path)] = assetNames;
+                var assetBundleBuilds = __CreateAssetBundleBuilds(assetNameMap);
 
                 var folder = Path.GetDirectoryName(path);
                 var assetBundle = AssetBundle.LoadFromFile(Path.Combine(folder, Path.GetFileName(folder)));
@@ -559,7 +524,7 @@ namespace ZG
                 var buildAssetBundleOptions = AssetEditor.buildAssetBundleOptions;
                 var destination = BuildPipeline.BuildAssetBundles(
                     folder, 
-                    new AssetBundleBuild[] { assetBundleBuild }, 
+                    assetBundleBuilds.ToArray(), 
                     buildAssetBundleOptions, 
                     buildTarget);
 
@@ -718,6 +683,48 @@ namespace ZG
         {
             var bytes = Guid.NewGuid().ToByteArray();
             return new Hash128(BitConverter.ToUInt64(bytes, 0), BitConverter.ToUInt64(bytes, 8));
+        }
+
+        private static List<AssetBundleBuild> __CreateAssetBundleBuilds(Dictionary<string, List<string>> assetNameMap)
+        {
+            List<string> assetNames;
+            var assetBundleNames = AssetDatabase.GetAllAssetBundleNames();
+            foreach (var assetBundleNameToBuild in assetBundleNames)
+            {
+                if (assetNameMap == null)
+                    assetNameMap = new Dictionary<string, List<string>>();
+
+                if (!assetNameMap.TryGetValue(assetBundleNameToBuild, out assetNames))
+                {
+                    assetNames = new List<string>();
+
+                    assetNameMap[assetBundleNameToBuild] = assetNames;
+                }
+
+                assetNames.AddRange(AssetDatabase.GetAssetPathsFromAssetBundle(assetBundleNameToBuild));
+            }
+
+            if (assetNameMap == null)
+                return null;
+
+            string assetBundleName;
+            AssetBundleBuild assetBundleBuild = new AssetBundleBuild();
+            List<AssetBundleBuild> assetBundleBuilds = null;
+            foreach (var pair in assetNameMap)
+            {
+                assetBundleName = pair.Key;
+                assetNames = pair.Value;
+
+                assetBundleBuild.assetBundleName = assetBundleName;
+                assetBundleBuild.assetNames = assetNames.ToArray();
+
+                if (assetBundleBuilds == null)
+                    assetBundleBuilds = new List<AssetBundleBuild>();
+
+                assetBundleBuilds.Add(assetBundleBuild);
+            }
+
+            return assetBundleBuilds;
         }
 
         void OnGUI()
