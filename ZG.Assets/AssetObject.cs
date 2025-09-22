@@ -21,12 +21,15 @@ namespace ZG
             Local, 
             World
         }
+        
+        [System.Serializable]
+        public class LoadedEvent : UnityEngine.Events.UnityEvent<GameObject> { }
 
         private AssetBundleLoader<GameObject> __loader;
 
         private GameObject __target;
 
-        public event System.Action<GameObject> onCreated;
+        public LoadedEvent onLoaded;
 
         public abstract Space space { get; }
 
@@ -137,8 +140,7 @@ namespace ZG
                 yield break;
             }
 
-            if (onCreated != null)
-                onCreated(gameObject);
+            onLoaded?.Invoke(gameObject);
         }
     }
 }

@@ -2,10 +2,12 @@
     "name": "ZG.Assets.Platforms.Android",
     "rootNamespace": "",
     "references": [
-        "GUID:38d5088b410fc4249bce1feefb7adf85"
+        "GUID:38d5088b410fc4249bce1feefb7adf85",
+        "GUID:2bafac87e7f4b9b418d9448d219b01ab"
     ],
     "includePlatforms": [
-        "Android"
+        "Android",
+        "Editor"
     ],
     "excludePlatforms": [],
     "allowUnsafeCode": false,

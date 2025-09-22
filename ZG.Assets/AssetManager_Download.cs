@@ -1079,7 +1079,11 @@ namespace ZG
             ulong totalBytesDownload = 0, downloadedBytes, fileOffset, packSize, packDownloadedBytes, oldPackDownloadedBytes;
             long responseCode;
             string fileName, url, fullURL, packName, filePath;
+            
+#if ASSET_MANAGER_USE_TASK
             Exception exception;
+#endif
+            
             (ulong, string) fileOffsetAndPath;
             Writer writer;
             byte[] md5hash, preallocatedBuffer = null;
