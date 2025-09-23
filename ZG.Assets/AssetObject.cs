@@ -54,7 +54,7 @@ namespace ZG
                         gameObject = space == Space.World ? Instantiate(gameObject, transform.position, transform.rotation) : Instantiate(gameObject, transform);
 
                         var target = gameObject.AddComponent<AssetObject>();
-                        target.name = name;
+                        target.name = assetName;
                         target._loader = __loader;
 
                         __target = gameObject;
@@ -72,9 +72,10 @@ namespace ZG
 #if UNITY_EDITOR
             var assetPaths = UnityEditor.AssetDatabase.GetAssetPathsFromAssetBundle(fileName);
 
+            string assetName = this.assetName;
             foreach (var assetPath in assetPaths)
             {
-                if (System.IO.Path.GetFileNameWithoutExtension(assetPath) == name)
+                if (System.IO.Path.GetFileNameWithoutExtension(assetPath) == assetName)
                 {
                     __target = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(assetPath);
 
@@ -122,12 +123,7 @@ namespace ZG
                 __loader = default;
             }
 
-            //UnityEngine.Debug.LogError($"Dispose {fileName} : {name}");
             __loader.Dispose();
-
-            /*var assetManager = this.assetManager;
-            if(assetManager != null)
-                assetManager.Unload<GameObject>(__fileName, __assetName);*/
         }
 
         private IEnumerator __Load()
@@ -137,7 +133,7 @@ namespace ZG
             var gameObject = target;
             if (gameObject == null)
             {
-                Debug.LogError($"Asset Object {name} Load Fail.", this);
+                Debug.LogError($"Asset Object {assetName} Load Fail.", this);
 
                 yield break;
             }
