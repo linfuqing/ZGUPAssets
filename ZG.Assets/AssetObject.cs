@@ -37,6 +37,8 @@ namespace ZG
 
         public abstract string fileName { get; }
 
+        public abstract string assetName { get; }
+        
         public abstract AssetManager assetManager { get; }
 
         public GameObject target
@@ -91,7 +93,7 @@ namespace ZG
             }
 #endif
             
-            __loader = new AssetBundleLoader<GameObject>(fileName, name, assetManager);
+            __loader = new AssetBundleLoader<GameObject>(fileName, assetName, assetManager);
 
             StartCoroutine(__Load());
         }

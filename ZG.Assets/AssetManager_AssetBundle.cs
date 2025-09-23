@@ -301,7 +301,7 @@ namespace ZG
         }
     }
 
-    public struct AssetBundleLoader<T> : IEnumerator where T : UnityEngine.Object
+    public readonly struct AssetBundleLoader<T> : IEnumerator where T : UnityEngine.Object
     {
         public readonly bool IsManaged;
 
