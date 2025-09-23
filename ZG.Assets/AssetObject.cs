@@ -88,6 +88,8 @@ namespace ZG
                                 transform.rotation) : 
                             Instantiate(__target, transform);
 
+                        onLoaded?.Invoke(__target);
+                        
                         return;
                     }
                 }
