@@ -22,14 +22,13 @@ namespace ZG
             World
         }
         
-        [System.Serializable]
-        public class LoadedEvent : UnityEngine.Events.UnityEvent<GameObject> { }
-
         private AssetBundleLoader<GameObject> __loader;
 
         private GameObject __target;
 
-        public LoadedEvent onLoaded;
+        public event System.Action<GameObject> onLoadComplete;
+        
+        public float progress => __loader.progress;
 
         public abstract Space space { get; }
 
@@ -40,7 +39,7 @@ namespace ZG
         public abstract string assetName { get; }
         
         public abstract AssetManager assetManager { get; }
-
+        
         public GameObject target
         {
             get
@@ -88,7 +87,8 @@ namespace ZG
                                 transform.rotation) : 
                             Instantiate(__target, transform);
 
-                        onLoaded?.Invoke(__target);
+                        if(onLoadComplete != null)
+                            onLoadComplete(__target);
                         
                         return;
                     }
@@ -140,7 +140,8 @@ namespace ZG
                 yield break;
             }
 
-            onLoaded?.Invoke(gameObject);
+            if(onLoadComplete != null)
+                onLoadComplete(gameObject);
         }
     }
 }

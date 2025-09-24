@@ -158,11 +158,28 @@ namespace ZG
         {
             get
             {
+                float progressOffset = 0.0f, progressScale = 1.0f;
+                if (__isRecursive)
+                    Debug.LogError($"AssetBundle {__path} Is Recursive Dependency!");
+                else
+                {
+                    int numDependencies = __dependencies == null ? 0 : __dependencies.Length;
+                    if (numDependencies > 0)
+                    {
+                        progressScale = 1.0f / (numDependencies + 1.0f);
+
+                        __isRecursive = true;
+                        foreach (var dependency in __dependencies)
+                            progressOffset += dependency.progress;
+                        __isRecursive = false;
+                    }
+                }
+                
                 if (__createRequest != null)
                 {
                     UnityEngine.Assertions.Assert.IsNull(__assetBundle);
 
-                    return __createRequest.progress;
+                    return (__createRequest.progress + progressOffset) * progressScale;
                 }
 
                 if (isDone)
@@ -301,13 +318,20 @@ namespace ZG
         }
     }
 
-    public readonly struct AssetBundleLoader<T> : IEnumerator where T : UnityEngine.Object
+    public struct AssetBundleLoader<T> : IEnumerator where T : UnityEngine.Object
     {
         public readonly bool IsManaged;
 
         public readonly string AssetName;
 
         public readonly AssetBundleLoader Loader;
+
+        public float progress
+        {
+            get;
+
+            private set;
+        }
 
         public T value
         {
@@ -336,6 +360,8 @@ namespace ZG
 
             Loader = manager.GetOrCreateAssetBundleLoader(bundleName);
 
+            progress = 0.0f;
+
             if (Loader != null)
                 Loader.Retain();
         }
@@ -347,6 +373,8 @@ namespace ZG
             AssetName = assetName;
 
             Loader = loader;
+            
+            progress = 0.0f;
         }
 
         public bool Unload()
@@ -404,12 +432,16 @@ namespace ZG
             {
                 value = null;
 
+                //progress = 0.0f;
+
                 return false;
             }
 
             if (Loader.assets != null && Loader.assets.TryGetValue((AssetName, typeof(T)), out var target))
             {
                 value = (T[])target;
+
+                progress = 1.0f;
 
                 return false;
             }
@@ -431,8 +463,12 @@ namespace ZG
 
                     value = assets;
 
+                    progress = 1.0f;
+
                     return false;
                 }
+                
+                progress = 0.9f + request.progress * 0.1f;
             }
             else if (isSync)
             {
@@ -446,6 +482,8 @@ namespace ZG
                     Loader.assets.Add((AssetName, typeof(T)), value);
                 }
 
+                progress = 1.0f;
+
                 return false;
             }
             else if (!Loader.keepWaiting)
@@ -453,6 +491,8 @@ namespace ZG
                 if (Loader.refCount < 1)
                 {
                     value = null;
+
+                    //progress = 0.0f;
 
                     return false;
                 }
@@ -466,6 +506,8 @@ namespace ZG
 
                     value = null;
 
+                    //progress = 0.0f;
+
                     return false;
                 }
 
@@ -473,7 +515,11 @@ namespace ZG
                     Loader.assetBundleRequests = new Dictionary<(string, Type), AssetBundleRequest>();
 
                 Loader.assetBundleRequests.Add((AssetName, typeof(T)), request);
+
+                progress = 0.9f;
             }
+            else
+                progress = 0.9f * Loader.progress;
 
             value = null;
 
