@@ -35,6 +35,8 @@ namespace ZG
 
         private MonoBehaviour __behaviour;
 
+        private Transform __parent;
+
         private GameObject __target;
         
         private Coroutine __coroutine;
@@ -79,9 +81,11 @@ namespace ZG
             onLoadComplete = null;
         }
 
-        public void Load(AssetManager assetManager, MonoBehaviour behaviour)
+        public void Load(AssetManager assetManager, MonoBehaviour behaviour, Transform parent = null)
         {
             __behaviour = behaviour;
+            
+            __parent = parent == null ? behaviour.transform : parent;
             
 #if UNITY_EDITOR
             var assetPaths = UnityEditor.AssetDatabase.GetAssetPathsFromAssetBundle(_fileName);
@@ -94,12 +98,11 @@ namespace ZG
 
                     if (__target != null)
                     {
-                        var transform = __behaviour.transform;
                         __target = _space == Space.World ? UnityEngine.Object.Instantiate(
                                 __target, 
-                                transform.position, 
-                                transform.rotation) : 
-                            UnityEngine.Object.Instantiate(__target, transform);
+                                __parent.position, 
+                                __parent.rotation) : 
+                            UnityEngine.Object.Instantiate(__target, __parent);
 
                         if(onLoadComplete != null)
                             onLoadComplete(__target);
@@ -162,12 +165,11 @@ namespace ZG
                 var gameObject = __loader.value;
                 if (gameObject == null)
                     Debug.LogError($"Asset Object {_assetName} Load Fail.", __behaviour);
-                else
+                else if(__parent != null)
                 {
-                    var transform = __behaviour.transform;
                     gameObject = _space == Space.World ? 
-                        UnityEngine.Object.Instantiate(gameObject, transform.position, transform.rotation) : 
-                        UnityEngine.Object.Instantiate(gameObject, transform);
+                        UnityEngine.Object.Instantiate(gameObject, __parent.position, __parent.rotation) : 
+                        UnityEngine.Object.Instantiate(gameObject, __parent);
 
                     var target = gameObject.AddComponent<AssetObject>();
                     target.name = _assetName;
