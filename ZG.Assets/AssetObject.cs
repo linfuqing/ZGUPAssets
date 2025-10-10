@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using UnityEngine;
 
 namespace ZG
@@ -14,7 +15,8 @@ namespace ZG
         }
     }
 
-    public abstract class AssetObjectBase : MonoBehaviour
+    [Serializable]
+    public class AssetObjectLoader : IDisposable
     {
         public enum Space
         {
@@ -22,70 +24,82 @@ namespace ZG
             World
         }
         
-        private AssetBundleLoader<GameObject> __loader;
+        [SerializeField]
+        internal Space _space;
+
+        [SerializeField]
+        internal string _fileName;
+
+        [SerializeField]
+        internal string _assetName;
+
+        private MonoBehaviour __behaviour;
 
         private GameObject __target;
-
-        public event System.Action<GameObject> onLoadComplete;
         
-        public float progress => __loader.progress;
+        private Coroutine __coroutine;
 
-        public abstract Space space { get; }
+        private AssetBundleLoader<GameObject> __loader;
 
-        public abstract float time { get; }
+        public event Action<GameObject> onLoadComplete;
 
-        public abstract string fileName { get; }
-
-        public abstract string assetName { get; }
-        
-        public abstract AssetManager assetManager { get; }
-        
-        public GameObject target
+        public bool isDone
         {
             get
             {
-                if (__target == null && this != null)
+                if (__loader.isDone)
                 {
-                    var gameObject = __loader.value;
-                    if (gameObject != null)
-                    {
-                        var transform = this.transform;
-                        gameObject = space == Space.World ? Instantiate(gameObject, transform.position, transform.rotation) : Instantiate(gameObject, transform);
-
-                        var target = gameObject.AddComponent<AssetObject>();
-                        target.name = assetName;
-                        target._loader = __loader;
-
-                        __target = gameObject;
-                    }
-
-                    __loader = default;
+                    __GetOrInstantiate();
+                    
+                    return true;
                 }
 
-                return __target;
+                return false;
             }
         }
+        
+        public float progress => __loader.progress;
 
-        protected void OnEnable()
+        public GameObject target => __GetOrInstantiate();
+
+        public AssetObjectLoader(Space space, string fileName, string assetName)
         {
-#if UNITY_EDITOR
-            var assetPaths = UnityEditor.AssetDatabase.GetAssetPathsFromAssetBundle(fileName);
+            _space = space;
+            _fileName = fileName;
+            _assetName = assetName;
 
-            string assetName = this.assetName;
+            __behaviour = null;
+
+            __target = null;
+
+            __coroutine = null;
+
+            __loader = default;
+
+            onLoadComplete = null;
+        }
+
+        public void Load(AssetManager assetManager, MonoBehaviour behaviour)
+        {
+            __behaviour = behaviour;
+            
+#if UNITY_EDITOR
+            var assetPaths = UnityEditor.AssetDatabase.GetAssetPathsFromAssetBundle(_fileName);
+
             foreach (var assetPath in assetPaths)
             {
-                if (System.IO.Path.GetFileNameWithoutExtension(assetPath) == assetName)
+                if (System.IO.Path.GetFileNameWithoutExtension(assetPath) == _assetName)
                 {
                     __target = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(assetPath);
 
                     if (__target != null)
                     {
-                        var transform = this.transform;
-                        __target = space == Space.World ? Instantiate(
+                        var transform = __behaviour.transform;
+                        __target = _space == Space.World ? UnityEngine.Object.Instantiate(
                                 __target, 
                                 transform.position, 
                                 transform.rotation) : 
-                            Instantiate(__target, transform);
+                            UnityEngine.Object.Instantiate(__target, transform);
 
                         if(onLoadComplete != null)
                             onLoadComplete(__target);
@@ -96,52 +110,145 @@ namespace ZG
             }
 #endif
             
-            __loader = new AssetBundleLoader<GameObject>(fileName, assetName, assetManager);
+            __loader = new AssetBundleLoader<GameObject>(_fileName, _assetName, assetManager);
 
-            StartCoroutine(__Load());
+            __coroutine = __behaviour.StartCoroutine(__Load());
         }
 
-        protected void OnDisable()
+        public void Dispose(float time)
         {
-            float time = this.time;
             if (time > Mathf.Epsilon)
             {
                 var target = this.target;
                 if (target != null)
                 {
-                    Destroy(target, time);
+                    UnityEngine.Object.Destroy(target, time);
 
                     __target = null;
-
-                    __loader = default;
                 }
             }
-            else if(__target != null)
+            else 
             {
-                Destroy(__target);
+                if(__target != null)
+                {
+                    UnityEngine.Object.Destroy(__target);
 
-                __target = null;
+                    __target = null;
+                }
+                
+                if (__coroutine != null)
+                {
+                    if(__behaviour != null && __behaviour.isActiveAndEnabled)
+                        __behaviour.StopCoroutine(__coroutine);
+                    
+                    __coroutine = null;
+                }
+            }
+
+            __loader.Dispose();
+
+            __loader = default;
+        }
+
+        public void Dispose()
+        {
+            Dispose(0.0f);
+        }
+
+        private GameObject __GetOrInstantiate()
+        {
+            if (__target == null && __behaviour != null)
+            {
+                var gameObject = __loader.value;
+                if (gameObject == null)
+                    Debug.LogError($"Asset Object {_assetName} Load Fail.", __behaviour);
+                else
+                {
+                    var transform = __behaviour.transform;
+                    gameObject = _space == Space.World ? 
+                        UnityEngine.Object.Instantiate(gameObject, transform.position, transform.rotation) : 
+                        UnityEngine.Object.Instantiate(gameObject, transform);
+
+                    var target = gameObject.AddComponent<AssetObject>();
+                    target.name = _assetName;
+                    target._loader = __loader;
+
+                    __target = gameObject;
+                }
 
                 __loader = default;
             }
 
-            __loader.Dispose();
+            if (__coroutine != null)
+            {
+                if(__behaviour != null && __behaviour.isActiveAndEnabled)
+                    __behaviour.StopCoroutine(__coroutine);
+                    
+                __coroutine = null;
+                    
+                if(onLoadComplete != null)
+                    onLoadComplete(__target);
+            }
+
+            return __target;
         }
 
         private IEnumerator __Load()
         {
             yield return __loader;
 
-            var gameObject = target;
-            if (gameObject == null)
-            {
-                Debug.LogError($"Asset Object {assetName} Load Fail.", this);
+            __GetOrInstantiate();
+        }
+    }
 
-                yield break;
+    public abstract class AssetObjectBase : MonoBehaviour
+    {
+        private AssetObjectLoader __loader;
+
+        public event Action<GameObject> onLoadComplete
+        {
+            add
+            {
+                if(__loader == null)
+                    __loader = new AssetObjectLoader(space, fileName, assetName);
+
+                __loader.onLoadComplete += value;
             }
 
-            if(onLoadComplete != null)
-                onLoadComplete(gameObject);
+            remove
+            {
+                if(__loader != null)
+                    __loader.onLoadComplete -= value;
+            }
+        }
+        
+        public bool isDone => __loader != null && __loader.isDone;
+        
+        public float progress => __loader == null ? 0.0f : __loader.progress;
+
+        public abstract AssetObjectLoader.Space space { get; }
+
+        public abstract float time { get; }
+
+        public abstract string fileName { get; }
+
+        public abstract string assetName { get; }
+        
+        public abstract AssetManager assetManager { get; }
+        
+        public GameObject target => __loader == null ? null : __loader.target;
+
+        protected void OnEnable()
+        {
+            if(__loader == null)
+                __loader = new AssetObjectLoader(space, fileName, assetName);
+            
+            __loader.Load(assetManager, this);
+        }
+
+        protected void OnDisable()
+        {
+            __loader.Dispose(time);
         }
     }
 }

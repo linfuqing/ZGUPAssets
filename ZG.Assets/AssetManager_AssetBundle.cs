@@ -318,19 +318,24 @@ namespace ZG
         }
     }
 
-    public struct AssetBundleLoader<T> : IEnumerator where T : UnityEngine.Object
+    public readonly struct AssetBundleLoader<T> : IEnumerator where T : UnityEngine.Object
     {
         public readonly bool IsManaged;
 
         public readonly string AssetName;
 
         public readonly AssetBundleLoader Loader;
+        
+        public bool isDone => !__GetOrLoad(false, out _, out _);
 
         public float progress
         {
-            get;
+            get
+            {
+                __GetOrLoad(false, out float result, out T[] value);
 
-            private set;
+                return result;
+            }
         }
 
         public T value
@@ -346,7 +351,7 @@ namespace ZG
         {
             get
             {
-                __GetOrLoad(true, out T[] value);
+                __GetOrLoad(true, out _, out T[] value);
 
                 return value;
             }
@@ -360,8 +365,6 @@ namespace ZG
 
             Loader = manager.GetOrCreateAssetBundleLoader(bundleName);
 
-            progress = 0.0f;
-
             if (Loader != null)
                 Loader.Retain();
         }
@@ -373,8 +376,6 @@ namespace ZG
             AssetName = assetName;
 
             Loader = loader;
-            
-            progress = 0.0f;
         }
 
         public bool Unload()
@@ -424,15 +425,15 @@ namespace ZG
             Loader.Release();
         }
 
-        public bool MoveNext() => __GetOrLoad(false, out _);
+        public bool MoveNext() => __GetOrLoad(false, out _, out _);
 
-        private bool __GetOrLoad(bool isSync, out T[] value)
+        private bool __GetOrLoad(bool isSync, out float progress, out T[] value)
         {
             if (Loader == null)
             {
                 value = null;
 
-                //progress = 0.0f;
+                progress = 0.0f;
 
                 return false;
             }
@@ -453,13 +454,11 @@ namespace ZG
                     Loader.assetBundleRequests.Remove((AssetName, typeof(T)));
 
                     T[] assets =  Array.ConvertAll(request.allAssets, x => (T)x);
-                    if (assets != null)
-                    {
-                        if (Loader.assets == null)
-                            Loader.assets = new Dictionary<(string, Type), UnityEngine.Object[]>();
 
-                        Loader.assets.Add((AssetName, typeof(T)), assets);
-                    }
+                    if (Loader.assets == null)
+                        Loader.assets = new Dictionary<(string, Type), UnityEngine.Object[]>();
+
+                    Loader.assets.Add((AssetName, typeof(T)), assets);
 
                     value = assets;
 
@@ -492,7 +491,7 @@ namespace ZG
                 {
                     value = null;
 
-                    //progress = 0.0f;
+                    progress = 0.0f;
 
                     return false;
                 }
@@ -506,7 +505,7 @@ namespace ZG
 
                     value = null;
 
-                    //progress = 0.0f;
+                    progress = 0.0f;
 
                     return false;
                 }
