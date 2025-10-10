@@ -51,7 +51,7 @@ namespace ZG
         {
             get
             {
-                if (__loader.isDone)
+                if (__loader.isVail && __loader.isDone)
                 {
                     __GetOrInstantiate();
                     
