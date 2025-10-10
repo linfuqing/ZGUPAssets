@@ -210,20 +210,24 @@ namespace ZG
     public abstract class AssetObjectBase : MonoBehaviour
     {
         private AssetObjectLoader __loader;
+        
+        private Action<GameObject> __onLoadComplete;
 
         public event Action<GameObject> onLoadComplete
         {
             add
             {
-                if(__loader == null)
-                    __loader = new AssetObjectLoader(space, fileName, assetName, this, transform);
-
-                __loader.onLoadComplete += value;
+                if (__loader == null)
+                    __onLoadComplete += value;
+                else
+                    __loader.onLoadComplete += value;
             }
 
             remove
             {
-                if(__loader != null)
+                if (__loader == null)
+                    __onLoadComplete -= value;
+                else
                     __loader.onLoadComplete -= value;
             }
         }
@@ -246,9 +250,18 @@ namespace ZG
 
         protected void OnEnable()
         {
-            if(__loader == null)
+            if (__loader == null)
+            {
                 __loader = new AssetObjectLoader(space, fileName, assetName, this, transform);
-            
+
+                if (__onLoadComplete != null)
+                {
+                    __loader.onLoadComplete += __onLoadComplete;
+
+                    __onLoadComplete = null;
+                }
+            }
+
             __loader.Load(assetManager);
         }
 
