@@ -47,20 +47,7 @@ namespace ZG
 
         public bool isLoading => __loader.isVail;
 
-        public bool isDone
-        {
-            get
-            {
-                if (__loader.isVail && __loader.isDone)
-                {
-                    __GetOrInstantiate();
-                    
-                    return true;
-                }
-
-                return false;
-            }
-        }
+        public bool isDone => !isLoading && __GetOrInstantiate() != null;
         
         public float progress => __loader.progress;
 
