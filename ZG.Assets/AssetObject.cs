@@ -162,13 +162,15 @@ namespace ZG
 
         private GameObject __GetOrInstantiate()
         {
-            if (__target == null && __behaviour != null)
+            if (__loader.isVail)
             {
                 var gameObject = __loader.value;
                 if (gameObject == null)
                     Debug.LogError($"Asset Object {_assetName} Load Fail.", __behaviour);
                 else if(__parent != null)
                 {
+                    UnityEngine.Assertions.Assert.IsNull(__target);
+                    
                     gameObject = _space == Space.World ? 
                         UnityEngine.Object.Instantiate(gameObject, __parent.position, __parent.rotation) : 
                         UnityEngine.Object.Instantiate(gameObject, __parent);
