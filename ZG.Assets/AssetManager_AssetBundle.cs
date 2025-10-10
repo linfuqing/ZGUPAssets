@@ -326,6 +326,8 @@ namespace ZG
 
         public readonly AssetBundleLoader Loader;
         
+        public bool isVail => Loader != null;
+        
         public bool isDone => !__GetOrLoad(false, out _, out _);
 
         public float progress

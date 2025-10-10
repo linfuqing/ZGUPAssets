@@ -45,6 +45,8 @@ namespace ZG
 
         public event Action<GameObject> onLoadComplete;
 
+        public bool isLoading => __loader.isVail;
+
         public bool isDone
         {
             get
@@ -64,13 +66,20 @@ namespace ZG
 
         public GameObject target => __GetOrInstantiate();
 
-        public AssetObjectLoader(Space space, string fileName, string assetName)
+        public AssetObjectLoader(
+            Space space, 
+            string fileName, 
+            string assetName, 
+            MonoBehaviour behaviour, 
+            Transform parent)
         {
             _space = space;
             _fileName = fileName;
             _assetName = assetName;
 
-            __behaviour = null;
+            __behaviour = behaviour;
+
+            __parent = parent;
 
             __target = null;
 
@@ -81,12 +90,15 @@ namespace ZG
             onLoadComplete = null;
         }
 
-        public void Load(AssetManager assetManager, MonoBehaviour behaviour, Transform parent = null)
+        public void Init(MonoBehaviour behaviour, Transform parent = null)
         {
             __behaviour = behaviour;
             
-            __parent = parent == null ? behaviour.transform : parent;
-            
+            __parent = parent == null ? __parent ?? behaviour.transform : parent;
+        }
+
+        public void Load(AssetManager assetManager)
+        {
 #if UNITY_EDITOR
             var assetPaths = UnityEditor.AssetDatabase.GetAssetPathsFromAssetBundle(_fileName);
 
@@ -212,7 +224,7 @@ namespace ZG
             add
             {
                 if(__loader == null)
-                    __loader = new AssetObjectLoader(space, fileName, assetName);
+                    __loader = new AssetObjectLoader(space, fileName, assetName, this, transform);
 
                 __loader.onLoadComplete += value;
             }
@@ -243,9 +255,9 @@ namespace ZG
         protected void OnEnable()
         {
             if(__loader == null)
-                __loader = new AssetObjectLoader(space, fileName, assetName);
+                __loader = new AssetObjectLoader(space, fileName, assetName, this, transform);
             
-            __loader.Load(assetManager, this);
+            __loader.Load(assetManager);
         }
 
         protected void OnDisable()
