@@ -99,6 +99,9 @@ namespace ZG
 
         public void Load(AssetManager assetManager)
         {
+            if (isLoading || isDone)
+                return;
+            
 #if UNITY_EDITOR
             var assetPaths = UnityEditor.AssetDatabase.GetAssetPathsFromAssetBundle(_fileName);
 
