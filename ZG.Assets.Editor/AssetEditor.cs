@@ -13,7 +13,7 @@ namespace ZG
         //public const string BUILD_ASSET_BUNDLE_KEY = "ZGBuildAssetBundle";
         
         public const string BUILD_ASSET_BUNDLE_OPTIONS = "ZGBuildAssetBundleOptions";
-        public const string BUILD_TARGET = "ZGBuildTarget";
+        //public const string BUILD_TARGET = "ZGBuildTarget";
         public const string ASSET_CONFIG_PATH = "ZGAssetConfigPath";
 
         public const string PATH = "ZGBuildAssetPath";
@@ -23,7 +23,7 @@ namespace ZG
         //private bool __isBuildAssetBundle;
         private BuildAssetBundleOptions __buildAssetBundleOptions;
         private BuildOptions __buildOptions;
-        private BuildTarget __buildTarget;
+        //private BuildTarget __buildTarget;
 
         public static bool isAppendHashToName =>
             (buildAssetBundleOptions & BuildAssetBundleOptions.AppendHashToAssetBundleName) ==
@@ -89,8 +89,8 @@ namespace ZG
             for (int i = 0; i < numGUIDs; ++i)
                 paths[i] = AssetDatabase.GUIDToAssetPath(guids[i]);
 
-            BuildTarget buildTarget = (BuildTarget)Enum.Parse(typeof(BuildTarget), EditorPrefs.GetString(BUILD_TARGET));
-            var report = BuildPipeline.BuildPlayer(paths, path, buildTarget, BuildOptions.BuildAdditionalStreamedScenes);
+            //BuildTarget buildTarget = (BuildTarget)Enum.Parse(typeof(BuildTarget), EditorPrefs.GetString(BUILD_TARGET));
+            var report = BuildPipeline.BuildPlayer(paths, path, EditorUserBuildSettings.activeBuildTarget, BuildOptions.BuildAdditionalStreamedScenes);
             if (report.summary.result != UnityEditor.Build.Reporting.BuildResult.Succeeded)
                 return;
 
@@ -122,8 +122,8 @@ namespace ZG
             for (int i = 0; i < numGUIDs; ++i)
                 paths[i] = AssetDatabase.GUIDToAssetPath(guids[i]);
 
-            BuildTarget buildTarget = (BuildTarget)Enum.Parse(typeof(BuildTarget), EditorPrefs.GetString(BUILD_TARGET));
-            var report = BuildPipeline.BuildPlayer(paths, path, buildTarget, BuildOptions.BuildAdditionalStreamedScenes | BuildOptions.UncompressedAssetBundle);
+            //BuildTarget buildTarget = (BuildTarget)Enum.Parse(typeof(BuildTarget), EditorPrefs.GetString(BUILD_TARGET));
+            var report = BuildPipeline.BuildPlayer(paths, path, EditorUserBuildSettings.activeBuildTarget, BuildOptions.BuildAdditionalStreamedScenes | BuildOptions.UncompressedAssetBundle);
             if (report.summary.result != UnityEditor.Build.Reporting.BuildResult.Succeeded)
                 return;
 
@@ -151,7 +151,7 @@ namespace ZG
 
             EditorPrefs.SetString(PATH, path);
 
-            BuildTarget buildTarget = (BuildTarget)Enum.Parse(typeof(BuildTarget), EditorPrefs.GetString(BUILD_TARGET));
+            //BuildTarget buildTarget = (BuildTarget)Enum.Parse(typeof(BuildTarget), EditorPrefs.GetString(BUILD_TARGET));
 
             AssetManager assetManager = new AssetManager(Path.Combine(path, Path.GetFileName(path)));
 
@@ -173,7 +173,7 @@ namespace ZG
                 paths[0] = assetPath;
 
                 assetPath = Path.GetFileNameWithoutExtension(assetPath) + ".scene";
-                report = BuildPipeline.BuildPlayer(paths, Path.Combine(path, assetPath), buildTarget, BuildOptions.BuildAdditionalStreamedScenes);
+                report = BuildPipeline.BuildPlayer(paths, Path.Combine(path, assetPath), EditorUserBuildSettings.activeBuildTarget, BuildOptions.BuildAdditionalStreamedScenes);
                 if (report.summary.result != UnityEditor.Build.Reporting.BuildResult.Succeeded)
                 {
                     EditorUtility.ClearProgressBar();
@@ -263,8 +263,8 @@ namespace ZG
             }
 
             BuildAssetBundleOptions buildAssetBundleOptions = AssetEditor.buildAssetBundleOptions;
-            BuildTarget buildTarget = (BuildTarget)Enum.Parse(typeof(BuildTarget), EditorPrefs.GetString(BUILD_TARGET));
-            AssetBundleManifest destination = BuildPipeline.BuildAssetBundles(Path.GetDirectoryName(path), assetBundleBuilds.ToArray(), buildAssetBundleOptions, buildTarget);
+            //BuildTarget buildTarget = (BuildTarget)Enum.Parse(typeof(BuildTarget), EditorPrefs.GetString(BUILD_TARGET));
+            AssetBundleManifest destination = BuildPipeline.BuildAssetBundles(Path.GetDirectoryName(path), assetBundleBuilds.ToArray(), buildAssetBundleOptions, EditorUserBuildSettings.activeBuildTarget);
 
             uint version = AssetEditor.version;
             AssetManager.UpdateAfterBuild(
@@ -359,8 +359,8 @@ namespace ZG
                 return;
 
             BuildAssetBundleOptions buildAssetBundleOptions = AssetEditor.buildAssetBundleOptions;
-            BuildTarget buildTarget = (BuildTarget)Enum.Parse(typeof(BuildTarget), EditorPrefs.GetString(BUILD_TARGET));
-            AssetBundleManifest destination = BuildPipeline.BuildAssetBundles(path, assetBundleBuilds.ToArray(), buildAssetBundleOptions, buildTarget);
+            //BuildTarget buildTarget = (BuildTarget)Enum.Parse(typeof(BuildTarget), EditorPrefs.GetString(BUILD_TARGET));
+            AssetBundleManifest destination = BuildPipeline.BuildAssetBundles(path, assetBundleBuilds.ToArray(), buildAssetBundleOptions, EditorUserBuildSettings.activeBuildTarget);
             
             uint version = AssetEditor.version;
             AssetManager.UpdateAfterBuild(
@@ -385,7 +385,7 @@ namespace ZG
             {
                 EditorPrefs.SetString(PATH, assetFolder);
 
-                BuildTarget buildTarget = (BuildTarget)Enum.Parse(typeof(BuildTarget), EditorPrefs.GetString(BUILD_TARGET));
+                BuildTarget buildTarget = EditorUserBuildSettings.activeBuildTarget;//(BuildTarget)Enum.Parse(typeof(BuildTarget), EditorPrefs.GetString(BUILD_TARGET));
                 int numFolderLength, numAssets, index;
                 string folder, extension, assetPath, subPath, assetBundleName;
                 //UnityEngine.Object asset;
@@ -487,7 +487,7 @@ namespace ZG
                 //string dataPath = Application.dataPath;
                 //dataPath = dataPath.Remove(dataPath.Length - 6, 6);
 
-                BuildTarget buildTarget = (BuildTarget)Enum.Parse(typeof(BuildTarget), EditorPrefs.GetString(BUILD_TARGET));
+                //BuildTarget buildTarget = (BuildTarget)Enum.Parse(typeof(BuildTarget), EditorPrefs.GetString(BUILD_TARGET));
                 string assetPath, targetPath;
                 UnityEngine.Object[] assets = Selection.GetFiltered(typeof(UnityEngine.Object), SelectionMode.DeepAssets);
                 List<string> assetNames = new List<string>();
@@ -526,7 +526,7 @@ namespace ZG
                     folder, 
                     assetBundleBuilds.ToArray(), 
                     buildAssetBundleOptions, 
-                    buildTarget);
+                    EditorUserBuildSettings.activeBuildTarget);
 
                 uint version = AssetEditor.version;
                 AssetManager.UpdateAfterBuild(
@@ -557,8 +557,8 @@ namespace ZG
                 //AssetDatabase.Refresh();
                 AssetDatabase.Refresh(ImportAssetOptions.ForceUpdate | ImportAssetOptions.ImportRecursive);
                 BuildAssetBundleOptions buildAssetBundleOptions = AssetEditor.buildAssetBundleOptions;
-                BuildTarget buildTarget = (BuildTarget)Enum.Parse(typeof(BuildTarget), EditorPrefs.GetString(BUILD_TARGET));
-                AssetBundleManifest destination = BuildPipeline.BuildAssetBundles(assetFolder, buildAssetBundleOptions, buildTarget);
+                //BuildTarget buildTarget = (BuildTarget)Enum.Parse(typeof(BuildTarget), EditorPrefs.GetString(BUILD_TARGET));
+                AssetBundleManifest destination = BuildPipeline.BuildAssetBundles(assetFolder, buildAssetBundleOptions, EditorUserBuildSettings.activeBuildTarget);
 
                 uint version = AssetEditor.version;
                 AssetManager.UpdateAfterBuild(
@@ -739,10 +739,10 @@ namespace ZG
             if (EditorGUI.EndChangeCheck())
                 EditorPrefs.SetInt(BUILD_ASSET_BUNDLE_OPTIONS, (int)__buildAssetBundleOptions);
 
-            EditorGUI.BeginChangeCheck();
+            /*EditorGUI.BeginChangeCheck();
             __buildTarget = (BuildTarget)EditorGUILayout.EnumPopup("Build Target", __buildTarget);
             if (EditorGUI.EndChangeCheck())
-                EditorPrefs.SetString(BUILD_TARGET, Enum.GetName(typeof(BuildTarget), __buildTarget));
+                EditorPrefs.SetString(BUILD_TARGET, Enum.GetName(typeof(BuildTarget), __buildTarget));*/
 
             EditorGUI.BeginChangeCheck();
             int version = EditorGUILayout.IntField("Version", (int)AssetEditor.version);
@@ -756,9 +756,9 @@ namespace ZG
             //__boneRoot = transform == null ? null : transform.Find(EditorPrefs.GetString(ROOT_PATH_KEY));
 
             __buildAssetBundleOptions = (BuildAssetBundleOptions)EditorPrefs.GetInt(BUILD_ASSET_BUNDLE_OPTIONS);
-            string buildTarget = EditorPrefs.GetString(BUILD_TARGET);
+            /*string buildTarget = EditorPrefs.GetString(BUILD_TARGET);
             if (!string.IsNullOrEmpty(buildTarget))
-                __buildTarget = (BuildTarget)Enum.Parse(typeof(BuildTarget), buildTarget);
+                __buildTarget = (BuildTarget)Enum.Parse(typeof(BuildTarget), buildTarget);*/
         }
     }
 }
