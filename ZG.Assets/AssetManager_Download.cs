@@ -616,8 +616,8 @@ namespace ZG
 
                         assetInfo = AssetInfo.Read(reader, version);
 
-                        if (assetInfos == null)
-                            assetInfos = new Dictionary<string, AssetInfo>();
+                        //if (assetInfos == null)
+                        //    assetInfos = new Dictionary<string, AssetInfo>();
 
                         assetInfos.Add(assetBundleName, assetInfo);
 

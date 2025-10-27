@@ -120,9 +120,9 @@ namespace ZG
             __coroutine = __behaviour.StartCoroutine(__Load());
         }
 
-        public void Dispose(float time)
+        public void Dispose(float time, bool isForce = true)
         {
-            if (time > Mathf.Epsilon)
+            if (time > Mathf.Epsilon && isForce)
             {
                 var target = this.target;
                 if (target != null)
@@ -136,7 +136,7 @@ namespace ZG
             {
                 if(__target != null)
                 {
-                    UnityEngine.Object.Destroy(__target);
+                    UnityEngine.Object.Destroy(__target, time);
 
                     __target = null;
                 }
