@@ -435,7 +435,7 @@ namespace ZG
             {
                 value = null;
 
-                progress = 0.0f;
+                progress = 1.0f;
 
                 return false;
             }
@@ -493,7 +493,7 @@ namespace ZG
                 {
                     value = null;
 
-                    progress = 0.0f;
+                    progress = 1.0f;
 
                     return false;
                 }
@@ -507,7 +507,7 @@ namespace ZG
 
                     value = null;
 
-                    progress = 0.0f;
+                    progress = 1.0f;
 
                     return false;
                 }
