@@ -14,6 +14,7 @@ namespace ZG
         }
 
         private bool __isDirty;
+        private Vector2 __scrollPosition;
         private HashSet<ModelImporter> __modelImporters = new HashSet<ModelImporter>();
         
         private ReorderableList __staticModelImporters;
@@ -123,9 +124,11 @@ namespace ZG
                         __isDirty = __modelImporters.Remove(modelImporter) | __isDirty;
                 };
             }
-            
+
+            __scrollPosition = EditorGUILayout.BeginScrollView(__scrollPosition);
             __staticModelImporters?.DoLayoutList();
             __dynamicModelImporters?.DoLayoutList();
+            EditorGUILayout.EndScrollView();
 
             if (__isDirty)
             {
