@@ -75,6 +75,8 @@ namespace ZG
 
                 __staticModelImporters.multiSelect = true;
                 
+                __staticModelImporters.headerHeight = EditorGUIUtility.singleLineHeight;
+                __staticModelImporters.elementHeight = EditorGUIUtility.singleLineHeight;
                 __staticModelImporters.drawHeaderCallback += rect => EditorGUI.LabelField(rect, "Static Model Importers");
                 
                 __staticModelImporters.drawElementCallback += (
@@ -92,6 +94,8 @@ namespace ZG
                         __isDirty = __modelImporters.Remove(modelImporter) | __isDirty;
                 };
                 
+                __dynamicModelImporters.headerHeight = EditorGUIUtility.singleLineHeight;
+                __dynamicModelImporters.elementHeight = EditorGUIUtility.singleLineHeight;
                 __dynamicModelImporters = new ReorderableList(
                     dynamicModelImporters,  
                     typeof(ModelImporter), 
@@ -120,8 +124,8 @@ namespace ZG
                 };
             }
             
-            __staticModelImporters.DoLayoutList();
-            __dynamicModelImporters.DoLayoutList();
+            __staticModelImporters?.DoLayoutList();
+            __dynamicModelImporters?.DoLayoutList();
 
             if (__isDirty)
             {
