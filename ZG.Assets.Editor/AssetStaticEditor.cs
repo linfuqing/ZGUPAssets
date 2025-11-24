@@ -14,7 +14,7 @@ namespace ZG
         }
 
         private bool __isDirty;
-        private HashSet<Object> __modelImporters = new HashSet<Object>();
+        private HashSet<ModelImporter> __modelImporters = new HashSet<ModelImporter>();
         
         private ReorderableList __staticModelImporters;
         private ReorderableList __dynamicModelImporters;
@@ -129,8 +129,13 @@ namespace ZG
 
             if (__isDirty)
             {
+                int index = 0;
                 var objects = new Object[__modelImporters.Count];
-                __modelImporters.CopyTo(objects, 0);
+                foreach (var modelImporter in __modelImporters)
+                {
+                    objects[index++] = AssetDatabase.LoadAssetAtPath<Object>(modelImporter.assetPath);
+                }
+                
                 Selection.objects = objects;
             }
         }
