@@ -136,7 +136,7 @@ namespace ZG
                 var objects = new Object[__modelImporters.Count];
                 foreach (var modelImporter in __modelImporters)
                 {
-                    objects[index++] = AssetDatabase.LoadAssetAtPath<Object>(modelImporter.assetPath);
+                    objects[index++] = AssetDatabase.LoadAssetAtPath<GameObject>(modelImporter.assetPath);
                 }
                 
                 Selection.objects = objects;
