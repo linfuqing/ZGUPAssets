@@ -85,8 +85,8 @@ namespace ZG
                     bool isActive,
                     bool isFocused) =>
                 {
-                    var modelImporter = __staticModelImporters.list[index] as Object;
-                    EditorGUI.LabelField(rect, modelImporter.name);
+                    var modelImporter = __staticModelImporters.list[index] as ModelImporter;
+                    EditorGUI.LabelField(rect, modelImporter.assetPath);
 
                     if (isActive)
                         __isDirty = __modelImporters.Add(modelImporter) | __isDirty;
@@ -94,8 +94,6 @@ namespace ZG
                         __isDirty = __modelImporters.Remove(modelImporter) | __isDirty;
                 };
                 
-                __dynamicModelImporters.headerHeight = EditorGUIUtility.singleLineHeight;
-                __dynamicModelImporters.elementHeight = EditorGUIUtility.singleLineHeight;
                 __dynamicModelImporters = new ReorderableList(
                     dynamicModelImporters,  
                     typeof(ModelImporter), 
@@ -106,7 +104,9 @@ namespace ZG
                 
                 __dynamicModelImporters.multiSelect = true;
 
-                __staticModelImporters.drawHeaderCallback += rect => EditorGUI.LabelField(rect, "Dynamic Model Importers");
+                __dynamicModelImporters.headerHeight = EditorGUIUtility.singleLineHeight;
+                __dynamicModelImporters.elementHeight = EditorGUIUtility.singleLineHeight;
+                __dynamicModelImporters.drawHeaderCallback += rect => EditorGUI.LabelField(rect, "Dynamic Model Importers");
 
                 __dynamicModelImporters.drawElementCallback += (
                     Rect rect,
@@ -114,8 +114,8 @@ namespace ZG
                     bool isActive,
                     bool isFocused) =>
                 {
-                    var modelImporter = __dynamicModelImporters.list[index] as Object;
-                    EditorGUI.LabelField(rect, modelImporter.name);
+                    var modelImporter = __dynamicModelImporters.list[index] as ModelImporter;
+                    EditorGUI.LabelField(rect, modelImporter.assetPath);
 
                     if (isActive)
                         __isDirty = __modelImporters.Add(modelImporter) | __isDirty;
