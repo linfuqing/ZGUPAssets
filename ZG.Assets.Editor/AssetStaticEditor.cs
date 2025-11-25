@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEditor;
 using UnityEditorInternal;
@@ -24,8 +25,8 @@ namespace ZG
         {
             if (GUILayout.Button("Generate Model Importer List"))
             {
-                var staticModelImporters = new List<ModelImporter>();
-                var dynamicModelImporters = new List<ModelImporter>();
+                var staticModelImporters = new HashSet<ModelImporter>();
+                var dynamicModelImporters = new HashSet<ModelImporter>();
 
                 MeshFilter[] meshFilters;
                 string[] assetPaths;
@@ -67,7 +68,7 @@ namespace ZG
                 EditorUtility.ClearProgressBar();
                 
                 __staticModelImporters = new ReorderableList(
-                    staticModelImporters,  
+                    staticModelImporters.ToArray(),  
                     typeof(ModelImporter), 
                     true, 
                     true, 
@@ -96,7 +97,7 @@ namespace ZG
                 };
                 
                 __dynamicModelImporters = new ReorderableList(
-                    dynamicModelImporters,  
+                    dynamicModelImporters.ToArray(),  
                     typeof(ModelImporter), 
                     true, 
                     true, 
@@ -132,11 +133,13 @@ namespace ZG
 
             if (__isDirty)
             {
+                __isDirty = false;
+                
                 int index = 0;
                 var objects = new Object[__modelImporters.Count];
                 foreach (var modelImporter in __modelImporters)
                 {
-                    objects[index++] = AssetDatabase.LoadAssetAtPath<GameObject>(modelImporter.assetPath);
+                    objects[index++] = modelImporter;//AssetDatabase.LoadAssetAtPath<GameObject>(modelImporter.assetPath);
                 }
                 
                 Selection.objects = objects;
