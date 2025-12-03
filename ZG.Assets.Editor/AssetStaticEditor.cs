@@ -144,6 +144,29 @@ namespace ZG
                 
                 Selection.objects = objects;
             }
+
+            if (GUILayout.Button("Auto Read&Write"))
+            {
+                var list = __staticModelImporters?.list;
+                if (list != null)
+                {
+                    foreach (ModelImporter importer in list)
+                    {
+                        importer.isReadable = true;
+                        importer.SaveAndReimport();
+                    }
+                }
+                
+                list = __dynamicModelImporters?.list;
+                if (list != null)
+                {
+                    foreach (ModelImporter importer in list)
+                    {
+                        importer.isReadable = false;
+                        importer.SaveAndReimport();
+                    }
+                }
+            }
         }
     }
 }
