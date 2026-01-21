@@ -89,7 +89,7 @@ namespace ZG
             if (isLoading || isDone)
                 return;
             
-#if UNITY_EDITOR
+/*#if UNITY_EDITOR
             var assetPaths = UnityEditor.AssetDatabase.GetAssetPathsFromAssetBundle(_fileName);
 
             foreach (var assetPath in assetPaths)
@@ -113,7 +113,7 @@ namespace ZG
                     }
                 }
             }
-#endif
+#endif*/
             
             __loader = new AssetBundleLoader<GameObject>(_fileName, _assetName, assetManager);
 

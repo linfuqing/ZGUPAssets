@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace ZG
 {
@@ -68,8 +69,8 @@ namespace ZG
         private IAssetBundleFactory __factory;
         private AssetBundleLoader[] __dependencies;
 
-        public Dictionary<(string, Type), AssetBundleRequest> assetBundleRequests;
-        public Dictionary<(string, Type), UnityEngine.Object[]> assets;
+        internal Dictionary<(string, Type), AssetBundleRequest> _assetBundleRequests;
+        internal Dictionary<(string, Type), UnityEngine.Object[]> _assets;
 
         public override bool keepWaiting
         {
@@ -199,6 +200,11 @@ namespace ZG
             __dependencies = dependencies;
         }
 
+        internal AssetBundleLoader()
+        {
+            __isRecursive = true;
+        }
+
         public int Retain()
         {
             if (__isRecursive)
@@ -223,15 +229,15 @@ namespace ZG
             UnityEngine.Assertions.Assert.IsTrue(refCount > 0);
             if (--refCount == 0)
             {
-                if (assets != null)
+                if (_assets != null)
                 {
                     /*foreach (var asset in assets.Values)
                         UnityEngine.Object.DestroyImmediate(asset);*/
 
-                    assets.Clear();
+                    _assets.Clear();
                 }
 
-                if (assetBundleRequests != null)
+                if (_assetBundleRequests != null)
                 {
                     /*foreach (var assetBundleRequest in assetBundleRequests.Values)
                     {
@@ -239,7 +245,7 @@ namespace ZG
                             UnityEngine.Object.DestroyImmediate(assetBundleRequest.asset, true);
                     }*/
 
-                    assetBundleRequests.Clear();
+                    _assetBundleRequests.Clear();
                 }
 
                 if (isDone)
@@ -361,11 +367,49 @@ namespace ZG
 
         public AssetBundleLoader(string bundleName, string assetName, AssetManager manager)
         {
-            IsManaged = false;
-
             AssetName = assetName;
 
-            Loader = manager.GetOrCreateAssetBundleLoader(bundleName);
+#if UNITY_EDITOR
+            var assetPaths = UnityEditor.AssetDatabase.GetAssetPathsFromAssetBundle(bundleName);
+            List<T> results = null;
+            UnityEngine.Object[] targets;
+            foreach (var assetPath in assetPaths)
+            {
+                if (Path.GetFileNameWithoutExtension(assetPath) == assetName)
+                {
+                    targets = UnityEditor.AssetDatabase.LoadAllAssetsAtPath(assetPath);
+                    if (targets == null)
+                        continue;
+
+                    foreach (var target in targets)
+                    {
+                        if (target is T result)
+                        {
+                            if (results == null)
+                                results = new List<T>();
+                            
+                            results.Add(result);
+                        }
+                    }
+                }
+            }
+
+            if (results != null)
+            {
+                IsManaged = true;
+
+                Loader = new AssetBundleLoader();
+
+                Loader._assets = new Dictionary<(string, Type), Object[]>();
+                Loader._assets[(AssetName, typeof(T))] = results.ToArray();
+
+                return;
+            }
+#endif
+
+            IsManaged = false;
+
+            Loader = manager?.GetOrCreateAssetBundleLoader(bundleName);
 
             if (Loader != null)
                 Loader.Retain();
@@ -389,17 +433,17 @@ namespace ZG
                 return true;
 
             UnityEngine.Object[] assets = null;
-            if (Loader.assetBundleRequests != null && Loader.assetBundleRequests.TryGetValue((AssetName, typeof(T)), out var assetBundleRequest))
+            if (Loader._assetBundleRequests != null && Loader._assetBundleRequests.TryGetValue((AssetName, typeof(T)), out var assetBundleRequest))
             {
                 assets = assetBundleRequest.allAssets;
 
-                Loader.assetBundleRequests.Remove((AssetName, typeof(T)));
+                Loader._assetBundleRequests.Remove((AssetName, typeof(T)));
             }
-            else if (Loader.assets != null && Loader.assets.TryGetValue((AssetName, typeof(T)), out assets))
+            else if (Loader._assets != null && Loader._assets.TryGetValue((AssetName, typeof(T)), out assets))
             {
                 //UnityEngine.Object.DestroyImmediate(asset);
 
-                Loader.assets.Remove((AssetName, typeof(T)));
+                Loader._assets.Remove((AssetName, typeof(T)));
             }
 
             if (assets != null)
@@ -440,7 +484,7 @@ namespace ZG
                 return false;
             }
 
-            if (Loader.assets != null && Loader.assets.TryGetValue((AssetName, typeof(T)), out var target))
+            if (Loader._assets != null && Loader._assets.TryGetValue((AssetName, typeof(T)), out var target))
             {
                 value = (T[])target;
 
@@ -449,18 +493,18 @@ namespace ZG
                 return false;
             }
 
-            if (Loader.assetBundleRequests != null && Loader.assetBundleRequests.TryGetValue((AssetName, typeof(T)), out var request))
+            if (Loader._assetBundleRequests != null && Loader._assetBundleRequests.TryGetValue((AssetName, typeof(T)), out var request))
             {
                 if (request != null && (request.isDone || isSync))
                 {
-                    Loader.assetBundleRequests.Remove((AssetName, typeof(T)));
+                    Loader._assetBundleRequests.Remove((AssetName, typeof(T)));
 
                     T[] assets =  Array.ConvertAll(request.allAssets, x => (T)x);
 
-                    if (Loader.assets == null)
-                        Loader.assets = new Dictionary<(string, Type), UnityEngine.Object[]>();
+                    if (Loader._assets == null)
+                        Loader._assets = new Dictionary<(string, Type), UnityEngine.Object[]>();
 
-                    Loader.assets.Add((AssetName, typeof(T)), assets);
+                    Loader._assets.Add((AssetName, typeof(T)), assets);
 
                     value = assets;
 
@@ -477,10 +521,10 @@ namespace ZG
                 value = assetBundle == null ? null : assetBundle.LoadAssetWithSubAssets<T>(AssetName);
                 if (value != null)
                 {
-                    if (Loader.assets == null)
-                        Loader.assets = new Dictionary<(string, Type), UnityEngine.Object[]>();
+                    if (Loader._assets == null)
+                        Loader._assets = new Dictionary<(string, Type), UnityEngine.Object[]>();
 
-                    Loader.assets.Add((AssetName, typeof(T)), value);
+                    Loader._assets.Add((AssetName, typeof(T)), value);
                 }
 
                 progress = 1.0f;
@@ -512,10 +556,10 @@ namespace ZG
                     return false;
                 }
 
-                if (Loader.assetBundleRequests == null)
-                    Loader.assetBundleRequests = new Dictionary<(string, Type), AssetBundleRequest>();
+                if (Loader._assetBundleRequests == null)
+                    Loader._assetBundleRequests = new Dictionary<(string, Type), AssetBundleRequest>();
 
-                Loader.assetBundleRequests.Add((AssetName, typeof(T)), request);
+                Loader._assetBundleRequests.Add((AssetName, typeof(T)), request);
 
                 progress = 0.9f;
             }
@@ -535,7 +579,7 @@ namespace ZG
         object IEnumerator.Current => null;
     }
 
-    public class AssetBundlePool : IDisposable
+    /*public class AssetBundlePool : IDisposable
     {
         public readonly AssetManager Manager;
 
@@ -585,7 +629,7 @@ namespace ZG
         {
             return Load<T>(bundleName, assetName).value;
         }
-    }
+    }*/
 
     public partial class AssetManager
     {
@@ -644,17 +688,17 @@ namespace ZG
                     return true;
 
                 UnityEngine.Object[] assets = null;
-                if (assetBundleLoader.assetBundleRequests != null && assetBundleLoader.assetBundleRequests.TryGetValue((assetName, typeof(T)), out var assetBundleRequest))
+                if (assetBundleLoader._assetBundleRequests != null && assetBundleLoader._assetBundleRequests.TryGetValue((assetName, typeof(T)), out var assetBundleRequest))
                 {
                     assets = assetBundleRequest.allAssets;
 
-                    assetBundleLoader.assetBundleRequests.Remove((assetName, typeof(T)));
+                    assetBundleLoader._assetBundleRequests.Remove((assetName, typeof(T)));
                 }
-                else if (assetBundleLoader.assets != null && assetBundleLoader.assets.TryGetValue((assetName, typeof(T)), out assets))
+                else if (assetBundleLoader._assets != null && assetBundleLoader._assets.TryGetValue((assetName, typeof(T)), out assets))
                 {
                     //UnityEngine.Object.DestroyImmediate(asset);
 
-                    assetBundleLoader.assets.Remove((assetName, typeof(T)));
+                    assetBundleLoader._assets.Remove((assetName, typeof(T)));
                 }
 
                 if (assets != null)
@@ -710,16 +754,16 @@ namespace ZG
 
             assetBundleLoader.Retain();
 
-            if (assetBundleLoader.assets != null && assetBundleLoader.assets.TryGetValue((assetName, typeof(T)), out var target))
+            if (assetBundleLoader._assets != null && assetBundleLoader._assets.TryGetValue((assetName, typeof(T)), out var target))
                 return (T[])target;
 
             T[] assets = null;
-            if (assetBundleLoader.assetBundleRequests != null && assetBundleLoader.assetBundleRequests.TryGetValue((assetName, typeof(T)), out var assetBundleRequest))
+            if (assetBundleLoader._assetBundleRequests != null && assetBundleLoader._assetBundleRequests.TryGetValue((assetName, typeof(T)), out var assetBundleRequest))
             {
                 if (assetBundleRequest.isDone)
                     assets = Array.ConvertAll(assetBundleRequest.allAssets, x => (T)x);
 
-                assetBundleLoader.assetBundleRequests.Remove((assetName, typeof(T)));
+                assetBundleLoader._assetBundleRequests.Remove((assetName, typeof(T)));
             }
 
             if (assets == null)
@@ -730,10 +774,10 @@ namespace ZG
 
             if (assets != null)
             {
-                if (assetBundleLoader.assets == null)
-                    assetBundleLoader.assets = new Dictionary<(string, Type), UnityEngine.Object[]>();
+                if (assetBundleLoader._assets == null)
+                    assetBundleLoader._assets = new Dictionary<(string, Type), UnityEngine.Object[]>();
 
-                assetBundleLoader.assets.Add((assetName, typeof(T)), assets);
+                assetBundleLoader._assets.Add((assetName, typeof(T)), assets);
             }
 
             return assets;
@@ -804,7 +848,7 @@ namespace ZG
             assetBundleLoader.Retain();
 
             AssetBundle assetBundle;
-            if (assetBundleLoader.assets != null && assetBundleLoader.assets.TryGetValue((assetName, typeof(T)), out var target))
+            if (assetBundleLoader._assets != null && assetBundleLoader._assets.TryGetValue((assetName, typeof(T)), out var target))
             {
                 if (onComplete != null)
                 {
@@ -839,7 +883,7 @@ namespace ZG
             assetBundle = assetBundleLoader.assetBundle;
 
             AssetBundleRequest assetBundleRequest;
-            if (assetBundleLoader.assetBundleRequests != null && assetBundleLoader.assetBundleRequests.TryGetValue((assetName, typeof(T)), out assetBundleRequest))
+            if (assetBundleLoader._assetBundleRequests != null && assetBundleLoader._assetBundleRequests.TryGetValue((assetName, typeof(T)), out assetBundleRequest))
             {
                 /*if (!assetBundleRequest.isDone)
                     yield return assetBundleRequest;*/
@@ -848,7 +892,7 @@ namespace ZG
             }
             else
             {
-                if (assetBundleLoader.assets != null && assetBundleLoader.assets.TryGetValue((assetName, typeof(T)), out target))
+                if (assetBundleLoader._assets != null && assetBundleLoader._assets.TryGetValue((assetName, typeof(T)), out target))
                 {
                     if (onComplete != null)
                     {
@@ -866,25 +910,25 @@ namespace ZG
                     Debug.LogError($"Asset {assetName} from {fileName} loaded fail.");
                 else
                 {
-                    if (assetBundleLoader.assetBundleRequests == null)
-                        assetBundleLoader.assetBundleRequests = new Dictionary<(string, Type), AssetBundleRequest>();
+                    if (assetBundleLoader._assetBundleRequests == null)
+                        assetBundleLoader._assetBundleRequests = new Dictionary<(string, Type), AssetBundleRequest>();
 
-                    assetBundleLoader.assetBundleRequests.Add((assetName, typeof(T)), assetBundleRequest);
+                    assetBundleLoader._assetBundleRequests.Add((assetName, typeof(T)), assetBundleRequest);
 
                     yield return assetBundleRequest;
                 }
             }
 
             T[] assets = null;
-            if (assetBundleLoader.assetBundleRequests != null)
+            if (assetBundleLoader._assetBundleRequests != null)
             {
-                if (assetBundleLoader.assetBundleRequests.TryGetValue((assetName, typeof(T)), out assetBundleRequest))
+                if (assetBundleLoader._assetBundleRequests.TryGetValue((assetName, typeof(T)), out assetBundleRequest))
                 {
-                    assetBundleLoader.assetBundleRequests.Remove((assetName, typeof(T)));
+                    assetBundleLoader._assetBundleRequests.Remove((assetName, typeof(T)));
 
                     assets = Array.ConvertAll(assetBundleRequest.allAssets, x => (T)x);
                 }
-                else if (assetBundleLoader.assets != null && assetBundleLoader.assets.TryGetValue((assetName, typeof(T)), out target))
+                else if (assetBundleLoader._assets != null && assetBundleLoader._assets.TryGetValue((assetName, typeof(T)), out target))
                 {
                     if (onComplete != null)
                     {
@@ -902,10 +946,10 @@ namespace ZG
 
             if (assets != null)
             {
-                if (assetBundleLoader.assets == null)
-                    assetBundleLoader.assets = new Dictionary<(string, Type), UnityEngine.Object[]>();
+                if (assetBundleLoader._assets == null)
+                    assetBundleLoader._assets = new Dictionary<(string, Type), UnityEngine.Object[]>();
 
-                assetBundleLoader.assets.Add((assetName, typeof(T)), assets);
+                assetBundleLoader._assets.Add((assetName, typeof(T)), assets);
             }
 
             if (onComplete != null)
