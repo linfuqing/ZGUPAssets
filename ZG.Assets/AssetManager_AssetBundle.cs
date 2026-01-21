@@ -371,39 +371,22 @@ namespace ZG
 
 #if UNITY_EDITOR
             var assetPaths = UnityEditor.AssetDatabase.GetAssetPathsFromAssetBundle(bundleName);
-            List<T> results = null;
-            UnityEngine.Object[] targets;
             foreach (var assetPath in assetPaths)
             {
                 if (Path.GetFileNameWithoutExtension(assetPath) == assetName)
                 {
-                    targets = UnityEditor.AssetDatabase.LoadAllAssetsAtPath(assetPath);
-                    if (targets == null)
-                        continue;
-
-                    foreach (var target in targets)
+                    if (UnityEditor.AssetDatabase.LoadAssetAtPath<T>(assetPath) is T result)
                     {
-                        if (target is T result)
-                        {
-                            if (results == null)
-                                results = new List<T>();
-                            
-                            results.Add(result);
-                        }
+                        IsManaged = true;
+
+                        Loader = new AssetBundleLoader();
+
+                        Loader._assets = new Dictionary<(string, Type), Object[]>();
+                        Loader._assets[(AssetName, typeof(T))] = new []{result};
+
+                        return;
                     }
                 }
-            }
-
-            if (results != null)
-            {
-                IsManaged = true;
-
-                Loader = new AssetBundleLoader();
-
-                Loader._assets = new Dictionary<(string, Type), Object[]>();
-                Loader._assets[(AssetName, typeof(T))] = results.ToArray();
-
-                return;
             }
 #endif
 
