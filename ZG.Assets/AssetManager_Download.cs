@@ -733,7 +733,12 @@ namespace ZG
             SaveAssetInfos(assetInfosPath, assetInfos);
         }
 
-        public static void UpdateAfterBuild(bool isAppendHashToAssetBundleName, AssetBundleManifest source, AssetBundleManifest destination, string path, ref uint assetVersion)
+        public static void UpdateAfterBuild(
+            bool isAppendHashToAssetBundleName, 
+            AssetBundleManifest source, 
+            AssetBundleManifest destination, 
+            string path, 
+            ref uint assetVersion)
         {
             string[] assetBundleNames = destination == null ? null : destination.GetAllAssetBundles();
             if (assetBundleNames == null)
@@ -751,7 +756,7 @@ namespace ZG
 
             var result = new Dictionary<string, AssetInfo>();
 
-            string assetName;
+            string assetName, originAssetBundleName, originAssetBundlePath;
             AssetInfo assetInfo;
             using (var md5 = new MD5CryptoServiceProvider())
             {
@@ -765,8 +770,17 @@ namespace ZG
                     {
                         assetInfos.Remove(assetName);
 
+                        originAssetBundleName =
+                            string.IsNullOrEmpty(assetInfo.fileName) ? assetName : assetInfo.fileName;
+                        if (originAssetBundleName != assetBundleName)
+                        {
+                            originAssetBundlePath = Path.Combine(path, originAssetBundleName);
+                            if (File.Exists(originAssetBundlePath))
+                                File.Delete(originAssetBundlePath);
+                        }
+
                         if (source != null && 
-                            source.GetAssetBundleHash(string.IsNullOrEmpty(assetInfo.fileName) ? assetName : assetInfo.fileName) == destination.GetAssetBundleHash(assetBundleName))
+                            source.GetAssetBundleHash(originAssetBundleName) == destination.GetAssetBundleHash(assetBundleName))
                         {
                             assetInfo.fileName = isAppendHashToAssetBundleName ? assetBundleName : string.Empty;
                             
@@ -803,9 +817,12 @@ namespace ZG
             {
                 foreach (var pair in assetInfos)
                 {
-                    filename = Path.Combine(path, pair.Key);
-                    if (File.Exists(filename))
-                        File.Delete(filename);
+                    originAssetBundleName = pair.Value.fileName;
+                    originAssetBundleName = string.IsNullOrEmpty(originAssetBundleName) ? pair.Key : originAssetBundleName;
+                    
+                    originAssetBundlePath = Path.Combine(path, originAssetBundleName);
+                    if (File.Exists(originAssetBundlePath))
+                        File.Delete(originAssetBundlePath);
                 }
             }
         }
