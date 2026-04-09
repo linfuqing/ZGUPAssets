@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections;
+using JetBrains.Annotations;
 using UnityEngine;
 
 namespace ZG
@@ -75,6 +76,15 @@ namespace ZG
             __loader = default;
 
             onLoadComplete = null;
+        }
+
+        public AssetObjectLoader([NotNull]AssetObjectLoader origin) : this(
+            origin._space, 
+            origin._fileName, 
+            origin._assetName, 
+            origin.__behaviour,
+            origin.__parent)
+        {
         }
 
         public void Init(MonoBehaviour behaviour, Transform parent = null)
