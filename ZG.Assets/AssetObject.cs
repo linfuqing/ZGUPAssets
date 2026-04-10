@@ -52,6 +52,10 @@ namespace ZG
         
         public float progress => __loader.progress;
 
+        public string assetName => _assetName;
+        
+        public string fileName => _fileName;
+
         public GameObject target => __GetOrInstantiate();
 
         public AssetObjectLoader(
