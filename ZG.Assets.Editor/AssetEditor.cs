@@ -1,11 +1,17 @@
 ﻿using UnityEngine;
 using UnityEditor;
 using System;
+using System.Reflection;
 using System.IO;
 using System.Collections.Generic;
 
 namespace ZG
 {
+    public interface IAssetBundleBuildCollector
+    {
+        void Collect(Dictionary<string, List<string>> assetNameMap);
+    }
+    
     public class AssetEditor : EditorWindow
     {
         //public const string ROOT_GUID_KEY = "AvatarRootGUID";
@@ -54,6 +60,27 @@ namespace ZG
             set
             {
                 EditorPrefs.SetString(ASSET_CONFIG_PATH, AssetDatabase.GetAssetPath(value));
+            }
+        }
+
+        public static Assembly[] loadedAssemblies
+        {
+            get
+            {
+                Assembly assembly = Assembly.Load("UnityEditor");
+                if (assembly != null)
+                {
+                    Type editorAssemblies = assembly.GetType("UnityEditor.EditorAssemblies");
+                    if (editorAssemblies != null)
+                    {
+                        var loadedAssemblies = editorAssemblies.GetMethod("get_loadedAssemblies", BindingFlags.NonPublic | BindingFlags.Static);
+                        var assemblies = loadedAssemblies.Invoke(null, null) as Assembly[];
+
+                        return assemblies;
+                    }
+                }
+
+                return null;
             }
         }
 
@@ -687,6 +714,20 @@ namespace ZG
 
         private static List<AssetBundleBuild> __CreateAssetBundleBuilds(Dictionary<string, List<string>> assetNameMap)
         {
+            foreach (var loadedAssembly in loadedAssemblies)
+            {
+                foreach (var type in loadedAssembly.GetTypes())
+                {
+                    if(type.IsClass || Array.IndexOf(type.GetInterfaces(), typeof(IAssetBundleBuildCollector)) == -1)
+                        continue;
+
+                    if (assetNameMap == null)
+                        assetNameMap = new Dictionary<string, List<string>>();
+                    
+                    ((IAssetBundleBuildCollector)Activator.CreateInstance(type)).Collect(assetNameMap);
+                }
+            }
+            
             List<string> assetNames;
             var assetBundleNames = AssetDatabase.GetAllAssetBundleNames();
             foreach (var assetBundleNameToBuild in assetBundleNames)

@@ -324,7 +324,7 @@ namespace ZG
         }
     }
 
-    public readonly struct AssetBundleLoader<T> : IEnumerator where T : UnityEngine.Object
+    public readonly struct AssetBundleLoader<T> : IEquatable<AssetBundleLoader<T>>, IEnumerator where T : UnityEngine.Object
     {
         public readonly bool IsManaged;
 
@@ -455,6 +455,16 @@ namespace ZG
         }
 
         public bool MoveNext() => __GetOrLoad(false, out _, out _);
+
+        public bool Equals(AssetBundleLoader<T> other)
+        {
+            return IsManaged == other.IsManaged && AssetName == other.AssetName && Loader == other.Loader;
+        }
+
+        public override int GetHashCode()
+        {
+            return AssetName.GetHashCode() ^ Loader.GetHashCode();
+        }
 
         private bool __GetOrLoad(bool isSync, out float progress, out T[] value)
         {
