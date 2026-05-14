@@ -370,6 +370,18 @@ namespace ZG
             AssetName = assetName;
 
 #if UNITY_EDITOR
+            if (UnityEditor.AssetDatabase.LoadAssetAtPath<T>(assetName) is T asset)
+            {
+                IsManaged = true;
+
+                Loader = new AssetBundleLoader();
+
+                Loader._assets = new Dictionary<(string, Type), Object[]>();
+                Loader._assets[(AssetName, typeof(T))] = new []{asset};
+
+                return;
+            }
+            
             var assetPaths = UnityEditor.AssetDatabase.GetAssetPathsFromAssetBundle(bundleName);
             foreach (var assetPath in assetPaths)
             {
