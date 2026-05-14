@@ -714,20 +714,6 @@ namespace ZG
 
         private static List<AssetBundleBuild> __CreateAssetBundleBuilds(Dictionary<string, List<string>> assetNameMap)
         {
-            foreach (var loadedAssembly in loadedAssemblies)
-            {
-                foreach (var type in loadedAssembly.GetTypes())
-                {
-                    if(type.IsClass || Array.IndexOf(type.GetInterfaces(), typeof(IAssetBundleBuildCollector)) == -1)
-                        continue;
-
-                    if (assetNameMap == null)
-                        assetNameMap = new Dictionary<string, List<string>>();
-                    
-                    ((IAssetBundleBuildCollector)Activator.CreateInstance(type)).Collect(assetNameMap);
-                }
-            }
-            
             List<string> assetNames;
             var assetBundleNames = AssetDatabase.GetAllAssetBundleNames();
             foreach (var assetBundleNameToBuild in assetBundleNames)
@@ -745,6 +731,20 @@ namespace ZG
                 assetNames.AddRange(AssetDatabase.GetAssetPathsFromAssetBundle(assetBundleNameToBuild));
             }
 
+            foreach (var loadedAssembly in loadedAssemblies)
+            {
+                foreach (var type in loadedAssembly.GetTypes())
+                {
+                    if(type.IsClass || Array.IndexOf(type.GetInterfaces(), typeof(IAssetBundleBuildCollector)) == -1)
+                        continue;
+
+                    if (assetNameMap == null)
+                        assetNameMap = new Dictionary<string, List<string>>();
+                    
+                    ((IAssetBundleBuildCollector)Activator.CreateInstance(type)).Collect(assetNameMap);
+                }
+            }
+            
             if (assetNameMap == null)
                 return null;
 
