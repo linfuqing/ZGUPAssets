@@ -229,6 +229,8 @@ namespace ZG
             UnityEngine.Assertions.Assert.IsTrue(refCount > 0);
             if (--refCount == 0)
             {
+                Debug.Log($"AssetBundle {__path} Released!");
+                
                 if (_assets != null)
                 {
                     /*foreach (var asset in assets.Values)
@@ -365,6 +367,10 @@ namespace ZG
             }
         }
 
+#if UNITY_EDITOR
+        private static readonly AssetBundleLoader Shared = new AssetBundleLoader();
+#endif
+        
         public AssetBundleLoader(string bundleName, string assetName, AssetManager manager)
         {
             AssetName = assetName;
@@ -374,7 +380,7 @@ namespace ZG
             {
                 IsManaged = true;
 
-                Loader = new AssetBundleLoader();
+                Loader = Shared;
 
                 Loader._assets = new Dictionary<(string, Type), Object[]>();
                 Loader._assets[(AssetName, typeof(T))] = new []{asset};
