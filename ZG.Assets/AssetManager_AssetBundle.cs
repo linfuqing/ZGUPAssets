@@ -382,7 +382,7 @@ namespace ZG
 
                 Loader = Shared;
 
-                Loader._assets = new Dictionary<(string, Type), Object[]>();
+                Loader._assets ??= new Dictionary<(string, Type), Object[]>();
                 Loader._assets[(assetName, typeof(T))] = new []{asset};
 
                 return;
@@ -397,9 +397,9 @@ namespace ZG
                     {
                         IsManaged = true;
 
-                        Loader = new AssetBundleLoader();
+                        Loader = Shared;
 
-                        Loader._assets = new Dictionary<(string, Type), Object[]>();
+                        Loader._assets ??= new Dictionary<(string, Type), Object[]>();
                         Loader._assets[(AssetName, typeof(T))] = new []{result};
 
                         return;
