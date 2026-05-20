@@ -376,14 +376,14 @@ namespace ZG
             AssetName = assetName;
 
 #if UNITY_EDITOR
-            if (UnityEditor.AssetDatabase.LoadAssetAtPath<T>(bundleName) is T asset)
+            if (UnityEditor.AssetDatabase.LoadAssetAtPath<T>(assetName) is T asset)
             {
                 IsManaged = true;
 
                 Loader = Shared;
 
                 Loader._assets = new Dictionary<(string, Type), Object[]>();
-                Loader._assets[(AssetName, typeof(T))] = new []{asset};
+                Loader._assets[(assetName, typeof(T))] = new []{asset};
 
                 return;
             }
