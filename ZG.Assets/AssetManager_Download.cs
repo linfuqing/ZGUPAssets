@@ -823,6 +823,10 @@ namespace ZG
                     originAssetBundlePath = Path.Combine(path, originAssetBundleName);
                     if (File.Exists(originAssetBundlePath))
                         File.Delete(originAssetBundlePath);
+
+                    originAssetBundlePath += ".manifest";
+                    if (File.Exists(originAssetBundlePath))
+                        File.Delete(originAssetBundlePath);
                 }
             }
         }

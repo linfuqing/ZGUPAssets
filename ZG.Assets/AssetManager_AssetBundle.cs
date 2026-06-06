@@ -41,6 +41,17 @@ namespace ZG
 
         public void Dispose()
         {
+            if (__instance.isDone)
+            {
+                var assetBundle = __instance.assetBundle;
+                if (assetBundle != null)
+                {
+                    assetBundle.Unload(true);
+                    Object.Destroy(assetBundle);
+                }
+            }
+
+            __instance = null;
         }
     }
 
@@ -130,16 +141,9 @@ namespace ZG
                 else if (__createRequest != null)
                 {
                     UnityEngine.Assertions.Assert.IsNull(__assetBundle);
-
-                    //if (__createRequest.isDone)
-                    {
-                        var assetBundle = __createRequest.assetBundle;
-                        assetBundle.Unload(true);
-                        UnityEngine.Object.Destroy(assetBundle);
-                        __createRequest = null;
-                    }
-                    /*else
-                        return true;*/
+                    
+                    __createRequest.Dispose();
+                    __createRequest = null;
                 }
 
                 return false;
@@ -262,8 +266,12 @@ namespace ZG
                 else if (__createRequest != null)
                 {
                     UnityEngine.Assertions.Assert.IsNull(__assetBundle);
+                    
+                    __createRequest.Dispose();
 
-                    //if (__createRequest.isDone)
+                    __createRequest = null;
+
+                    /*if (__createRequest.isDone)
                     {
                         var assetBundle = __createRequest.assetBundle;
                         if (assetBundle != null)
@@ -273,7 +281,7 @@ namespace ZG
                         }
 
                         __createRequest = null;
-                    }
+                    }*/
                 }
             }
 
