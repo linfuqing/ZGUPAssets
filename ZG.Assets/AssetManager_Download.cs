@@ -60,7 +60,7 @@ namespace ZG
     {
         public bool Update(ref string filePath, ref ulong fileOffset)
         {
-            filePath = Path.Combine(Application.streamingAssetsPath, filePath);
+            filePath = AssetFileUtility.Combine(Application.streamingAssetsPath, filePath);
 
             return true;
         }
@@ -169,7 +169,7 @@ namespace ZG
 
         public static IAssetPack RetrievePack(string filePath)
         {
-            if (!string.IsNullOrEmpty(filePath) &&__packFactories != null && __packFactories.TryGetValue(GetPath(filePath), out var packFactory))
+            if (!string.IsNullOrEmpty(filePath) && __packFactories != null && __packFactories.TryGetValue(GetPath(filePath), out var packFactory))
                 return packFactory.Retrieve();
 
             return null;
@@ -252,7 +252,7 @@ namespace ZG
                 out string filePath)
             {
                 filePath = string.IsNullOrEmpty(Directory) ? name : 
-                    System.IO.Path.Combine(Directory, System.IO.Path.GetFileName(name));
+                    AssetFileUtility.Combine(Directory, AssetFileUtility.GetFileName(name));
                 fileOffset = 0;
 
                 return true;
@@ -471,7 +471,7 @@ namespace ZG
                                 {
                                     CreateDirectory(assetPath);
 
-                                    __stream = File.Create(assetPath);
+                                    __stream = AssetFileUtility.Open(assetPath, FileMode.Create, FileAccess.Write);
                                 }
 
                                 if (__md5 != null)
@@ -681,17 +681,17 @@ namespace ZG
                         writer.Write(md5Hash, 0, md5Hash.Length);
                     }
 
-                    File.WriteAllBytes(path, stream.ToArray());
+                    AssetFileUtility.WriteAllBytes(path, stream.ToArray());
                 }
             }
         }
 
         public static void WriteAssetInfo(bool isAppendHashToAssetBundleName, string assetPath, ref uint assetVersion)
         {
-            string assetDirectory = Path.GetDirectoryName(assetPath),
-                assetName = Path.GetFileName(assetPath),
-                assetInfosPath = Path.Combine(assetDirectory, Path.GetFileName(assetDirectory)) + FILE_SUFFIX_ASSET_INFOS;
-            var assetInfos = File.Exists(assetInfosPath) ? LoadAssetInfos(File.ReadAllBytes(assetInfosPath), out _) : new Dictionary<string, AssetInfo>(1);
+            string assetDirectory = AssetFileUtility.GetDirectoryName(assetPath),
+                assetName = AssetFileUtility.GetFileName(assetPath),
+                assetInfosPath = AssetFileUtility.Combine(assetDirectory, AssetFileUtility.GetFileName(assetDirectory)) + FILE_SUFFIX_ASSET_INFOS;
+            var assetInfos = AssetFileUtility.Exists(assetInfosPath) ? LoadAssetInfos(AssetFileUtility.ReadAllBytes(assetInfosPath), out _) : new Dictionary<string, AssetInfo>(1);
 
             foreach (var value in assetInfos.Values)
                 assetVersion = Math.Max(assetVersion, value.version);
@@ -725,7 +725,7 @@ namespace ZG
                 else
                     assetInfo.fileName = string.Empty;
 
-                assetInfo.md5 = md5.ComputeHash(File.ReadAllBytes(assetPath));
+                assetInfo.md5 = md5.ComputeHash(AssetFileUtility.ReadAllBytes(assetPath));
 
                 assetInfos[assetName] = assetInfo;
             }
@@ -744,8 +744,8 @@ namespace ZG
             if (assetBundleNames == null)
                 return;
 
-            string filename = Path.Combine(path, Path.GetFileName(path) + FILE_SUFFIX_ASSET_INFOS);
-            var assetInfos = File.Exists(filename) ? LoadAssetInfos(File.ReadAllBytes(filename), out _) : null;
+            string filename = AssetFileUtility.Combine(path, AssetFileUtility.GetFileName(path) + FILE_SUFFIX_ASSET_INFOS);
+            var assetInfos = AssetFileUtility.Exists(filename) ? LoadAssetInfos(AssetFileUtility.ReadAllBytes(filename), out _) : null;
             if (assetInfos != null)
             {
                 foreach (var value in assetInfos.Values)
@@ -774,9 +774,9 @@ namespace ZG
                             string.IsNullOrEmpty(assetInfo.fileName) ? assetName : assetInfo.fileName;
                         if (originAssetBundleName != assetBundleName)
                         {
-                            originAssetBundlePath = Path.Combine(path, originAssetBundleName);
-                            if (File.Exists(originAssetBundlePath))
-                                File.Delete(originAssetBundlePath);
+                            originAssetBundlePath = AssetFileUtility.Combine(path, originAssetBundleName);
+                            if (AssetFileUtility.Exists(originAssetBundlePath))
+                                AssetFileUtility.Delete(originAssetBundlePath);
                         }
 
                         if (source != null && 
@@ -792,7 +792,7 @@ namespace ZG
 
                     try
                     {
-                        assetInfo.size = (uint)new FileInfo(Path.Combine(path, assetBundleName)).Length;
+                        assetInfo.size = (uint)new FileInfo(AssetFileUtility.Combine(path, assetBundleName)).Length;
                     }
                     catch (Exception e)
                     {
@@ -805,7 +805,7 @@ namespace ZG
 
                     assetInfo.fileName = isAppendHashToAssetBundleName ? assetBundleName : string.Empty;
 
-                    assetInfo.md5 = md5.ComputeHash(File.ReadAllBytes(Path.Combine(path, assetBundleName)));
+                    assetInfo.md5 = md5.ComputeHash(AssetFileUtility.ReadAllBytes(AssetFileUtility.Combine(path, assetBundleName)));
 
                     result.Add(assetName, assetInfo);
                 }
@@ -820,13 +820,13 @@ namespace ZG
                     originAssetBundleName = pair.Value.fileName;
                     originAssetBundleName = string.IsNullOrEmpty(originAssetBundleName) ? pair.Key : originAssetBundleName;
                     
-                    originAssetBundlePath = Path.Combine(path, originAssetBundleName);
-                    if (File.Exists(originAssetBundlePath))
-                        File.Delete(originAssetBundlePath);
+                    originAssetBundlePath = AssetFileUtility.Combine(path, originAssetBundleName);
+                    if (AssetFileUtility.Exists(originAssetBundlePath))
+                        AssetFileUtility.Delete(originAssetBundlePath);
 
                     originAssetBundlePath += ".manifest";
-                    if (File.Exists(originAssetBundlePath))
-                        File.Delete(originAssetBundlePath);
+                    if (AssetFileUtility.Exists(originAssetBundlePath))
+                        AssetFileUtility.Delete(originAssetBundlePath);
                 }
             }
         }
@@ -837,12 +837,12 @@ namespace ZG
 #endif
         )
         {
-            string filename = Path.Combine(path, Path.GetFileName(path)), assetInfosFileName = filename + FILE_SUFFIX_ASSET_INFOS;
-            var assetInfos = File.Exists(assetInfosFileName) ? LoadAssetInfos(File.ReadAllBytes(assetInfosFileName), out _) : null;
+            string filename = AssetFileUtility.Combine(path, AssetFileUtility.GetFileName(path)), assetInfosFileName = filename + FILE_SUFFIX_ASSET_INFOS;
+            var assetInfos = AssetFileUtility.Exists(assetInfosFileName) ? LoadAssetInfos(AssetFileUtility.ReadAllBytes(assetInfosFileName), out _) : null;
             if (assetInfos == null)
                 return;
 
-            using (var writer = new BinaryWriter(File.Open(filename + FILE_SUFFIX_ASSET_PACKAGE, FileMode.OpenOrCreate, FileAccess.Write)))
+            using (var writer = new BinaryWriter(AssetFileUtility.Open(filename + FILE_SUFFIX_ASSET_PACKAGE, FileMode.OpenOrCreate, FileAccess.Write)))
             {
 #if UNITY_EDITOR
                 int index = 0, count = assetInfos.Count;
@@ -853,7 +853,7 @@ namespace ZG
                     if (isShowProgressBar && UnityEditor.EditorUtility.DisplayCancelableProgressBar("Package", assetName, index++ * 1.0f / count))
                         break;
 #endif
-                    writer.Write(File.ReadAllBytes(Path.Combine(path, assetName)));
+                    writer.Write(AssetFileUtility.ReadAllBytes(AssetFileUtility.Combine(path, assetName)));
                 }
 
 #if UNITY_EDITOR
@@ -1135,7 +1135,7 @@ namespace ZG
                         fullURL = resultValue.Item2;
 
                         url = fullURL;
-                        fileName = Path.GetFileName(url);
+                        fileName = AssetFileUtility.GetFileName(url);
                         url = url.Remove(url.LastIndexOf(fileName));
 
                         assets.Clear();
@@ -1395,10 +1395,10 @@ namespace ZG
                                         }
 
                                         //data = www.downloadHandler?.data;
-                                        if (!File.Exists(filePath))
+                                        if (!AssetFileUtility.Exists(filePath))
                                             continue;
 
-                                        md5hash = md5.ComputeHash(File.OpenRead(filePath));
+                                        md5hash = md5.ComputeHash(AssetFileUtility.Open(filePath, FileMode.Open, FileAccess.Read));
 
                                         destination.info.fileName = string.Empty;
                                         

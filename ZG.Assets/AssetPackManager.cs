@@ -22,7 +22,7 @@ namespace ZG
 
             public IAssetPack Retrieve() => new AssetManager.DefaultAssetPack(
                 hasHeader ? path : null, 
-                string.IsNullOrEmpty(directory) ?System.IO.Path.GetDirectoryName(path) : directory);
+                string.IsNullOrEmpty(directory) ? AssetFileUtility.GetDirectoryName(path) : directory);
         }
 
         public struct Factory : IAssetPackFactory

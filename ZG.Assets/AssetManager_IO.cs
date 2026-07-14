@@ -1,18 +1,182 @@
 using System;
 using System.IO;
-using System.Net;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Collections;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Security.Cryptography;
 using UnityEngine;
-using UnityEngine.Networking;
-using UnityEngine.Scripting;
 
 namespace ZG
 {
+    public interface IAssetFileManager
+    {
+        public static IAssetFileManager instance;
+
+        string persistentDataPath { get; }
+        
+        string Combine(params string[] paths);
+
+        string GetFileNameWithoutExtension(string path);
+        
+        string GetFileName(string path);
+        
+        string GetDirectoryName(string fullPath);
+        
+        void CreateDirectory(string path);
+
+        bool ExistsDirectory(string path);
+        
+        bool Exists(string path);
+
+        void Delete(string path);
+
+        void Move(string srcPath, string dstPath);
+        
+        Stream Open(string path, FileMode fileMode, FileAccess fileAccess);
+
+        byte[] ReadAllBytes(string path);
+
+        void WriteAllBytes(string path, byte[] bytes);
+    }
+
+    public static class AssetFileUtility
+    {
+        public static string persistentDataPath
+        {
+            get
+            {
+                var fileManager = IAssetFileManager.instance;
+                if (fileManager == null)
+                    return Application.persistentDataPath;
+
+                return fileManager.persistentDataPath;
+            }
+        }
+
+        public static string Combine(params string[] paths)
+        {
+            var fileManager = IAssetFileManager.instance;
+            if (fileManager == null)
+                return Path.Combine(paths);
+
+            return fileManager.Combine(paths);
+        }
+
+        public static string GetFileNameWithoutExtension(string path)
+        {
+            var fileManager = IAssetFileManager.instance;
+            if (fileManager == null)
+                return Path.GetFileNameWithoutExtension(path);
+
+            return fileManager.GetFileNameWithoutExtension(path);
+        }
+        
+        public static string GetFileName(string path)
+        {
+            var fileManager = IAssetFileManager.instance;
+            if (fileManager == null)
+                return Path.GetFileName(path);
+
+            return fileManager.GetFileName(path);
+        }
+
+        public static string GetDirectoryName(string path)
+        {
+            var fileManager = IAssetFileManager.instance;
+            if (fileManager == null)
+                return Path.GetDirectoryName(path);
+
+            return fileManager.GetDirectoryName(path);
+        }
+
+        public static void CreateDirectory(string path)
+        {
+            var fileManager = IAssetFileManager.instance;
+            if (fileManager == null)
+            {
+                Directory.CreateDirectory(path);
+
+                return;
+            }
+
+            fileManager.CreateDirectory(path);
+        }
+
+        public static bool ExistsDirectory(string path)
+        {
+            var fileManager = IAssetFileManager.instance;
+            if (fileManager == null)
+                return Directory.Exists(path);
+            
+            return fileManager.ExistsDirectory(path);
+        }
+        
+        public static bool Exists(string path)
+        {
+            var fileManager = IAssetFileManager.instance;
+            if (fileManager == null)
+                return File.Exists(path);
+
+            return fileManager.Exists(path);
+        }
+        
+        public static void Delete(string path)
+        {
+            var fileManager = IAssetFileManager.instance;
+            if (fileManager == null)
+            {
+                File.Delete(path);
+
+                return;
+            }
+
+            fileManager.Delete(path);
+        }
+
+        public static void Move(string srcPath, string dstPath)
+        {
+            var fileManager = IAssetFileManager.instance;
+            if (fileManager == null)
+            {
+                File.Move(srcPath, dstPath);
+
+                return;
+            }
+
+            fileManager.Move(srcPath, dstPath);
+        }
+        
+        public static Stream Open(string path, FileMode fileMode, FileAccess fileAccess)
+        {
+            var fileManager = IAssetFileManager.instance;
+            if (fileManager == null)
+                return File.Open(path, fileMode, fileAccess);
+            
+            return fileManager.Open(path, fileMode, fileAccess);
+        }
+
+        public static byte[] ReadAllBytes(string path)
+        {
+            var fileManager = IAssetFileManager.instance;
+            if (fileManager == null)
+                return File.ReadAllBytes(path);
+            
+            return fileManager.ReadAllBytes(path);
+        }
+
+        public static void WriteAllBytes(string path, byte[] bytes)
+        {
+            var fileManager = IAssetFileManager.instance;
+            if (fileManager == null)
+            {
+                File.WriteAllBytes(path, bytes);
+
+                return;
+            }
+            
+            fileManager.WriteAllBytes(path, bytes);
+        }
+    }
+    
     public partial class AssetManager
     {
         public struct StreamWrapper : IDisposable
@@ -113,7 +277,7 @@ namespace ZG
 
                 CreateDirectory(path);
 
-                StreamWrapper = new StreamWrapper(File.Open(path, FileMode.OpenOrCreate, FileAccess.ReadWrite));
+                StreamWrapper = new StreamWrapper(AssetFileUtility.Open(path, FileMode.OpenOrCreate, FileAccess.ReadWrite));
 
                 __reader = new BinaryReader(StreamWrapper.Stream);
                 __writer = new BinaryWriter(StreamWrapper.Stream);
@@ -148,7 +312,7 @@ namespace ZG
                     Asset asset;
                     foreach (string assetName in assetNames)
                     {
-                        __writer.Write(Path.GetFileName(assetName));
+                        __writer.Write(AssetFileUtility.GetFileName(assetName));
 
                         offset = StreamWrapper.Stream.Position;
 
@@ -220,7 +384,7 @@ namespace ZG
 
                     //Debug.Log($"{__path} : {name} : {fileStream.Length} : {CountOf(folder)}");
 
-                    __writer.Write(Path.GetFileName(name));
+                    __writer.Write(AssetFileUtility.GetFileName(name));
 
                     asset.offset = StreamWrapper.Stream.Position;
 
@@ -249,7 +413,7 @@ namespace ZG
 
         public static string GetFolderName(string path)
         {
-            string folder = Path.GetDirectoryName(path);
+            string folder = AssetFileUtility.GetDirectoryName(path);
             if (!string.IsNullOrEmpty(folder))
                 folder = FilterFolderName(folder);
 
@@ -258,13 +422,13 @@ namespace ZG
 
         public static void CreateDirectory(string path)
         {
-            string folder = Path.GetDirectoryName(path);
-            if (string.IsNullOrEmpty(folder) || Directory.Exists(folder))
+            string folder = AssetFileUtility.GetDirectoryName(path);
+            if (string.IsNullOrEmpty(folder) || AssetFileUtility.ExistsDirectory(folder))
                 return;
 
             CreateDirectory(folder);
 
-            Directory.CreateDirectory(folder);
+            AssetFileUtility.CreateDirectory(folder);
         }
 
         public uint GetVersion(string folder)
@@ -274,20 +438,20 @@ namespace ZG
 
             string path = __GetManagerPath(folder);
 
-            if (!File.Exists(path))
+            if (!AssetFileUtility.Exists(path))
                 return 0;
 
-            using (var reader = new BinaryReader(File.OpenRead(path)))
+            using (var reader = new BinaryReader(AssetFileUtility.Open(path, FileMode.Open, FileAccess.Read)))
                 return reader.ReadUInt32();
         }
 
         public void LoadFrom(string path)
         {
-            string folder = Path.GetDirectoryName(path);
-            path = string.IsNullOrEmpty(path) ? __path : Path.Combine(Path.GetDirectoryName(__path), path);
-            if (File.Exists(path))
+            string folder = AssetFileUtility.GetDirectoryName(path);
+            path = string.IsNullOrEmpty(path) ? __path : AssetFileUtility.Combine(AssetFileUtility.GetDirectoryName(__path), path);
+            if (AssetFileUtility.Exists(path))
             {
-                using (var fileStream = File.OpenRead(path))
+                using (var fileStream = AssetFileUtility.Open(path, FileMode.Open, FileAccess.Read))
                 {
                     if(!__Load(fileStream, folder, out uint version, ref __assets))
                         Debug.LogError(path);
@@ -364,8 +528,10 @@ namespace ZG
                     if (handler != null)
                         handler(name, index++, count);
 
-                    path = Path.Combine(Path.GetDirectoryName(__path), name);
-                    if (!File.Exists(path) || !MemoryEquals(md5.ComputeHash(File.OpenRead(path)), asset.data.info.md5))
+                    path = AssetFileUtility.Combine(AssetFileUtility.GetDirectoryName(__path), name);
+                    if (!AssetFileUtility.Exists(path) || !MemoryEquals(
+                            md5.ComputeHash(AssetFileUtility.Open(path, FileMode.Open, FileAccess.Read)),
+                            asset.data.info.md5))
                     {
                         if (assetNames == null)
                             assetNames = new List<string>();
@@ -384,7 +550,7 @@ namespace ZG
 
         public void Update(in Hash128 guid, string name, ref uint minVersion)
         {
-            string directoryName = Path.GetDirectoryName(__path);
+            string directoryName = AssetFileUtility.GetDirectoryName(__path);
             if (version < 1)
             {
                 version = VERSION;
@@ -401,15 +567,15 @@ namespace ZG
                         foreach (var key in keys)
                         {
                             asset = __assets[key];
-                            asset.data.info.md5 = md5.ComputeHash(File.ReadAllBytes(Path.Combine(directoryName, key)));
+                            asset.data.info.md5 = md5.ComputeHash(AssetFileUtility.ReadAllBytes(AssetFileUtility.Combine(directoryName, key)));
                             __assets[key] = asset;
                         }
                     }
                 }
             }
 
-            string path = Path.Combine(directoryName, name);
-            if (File.Exists(path))
+            string path = AssetFileUtility.Combine(directoryName, name);
+            if (AssetFileUtility.Exists(path))
             {
                 AssetData data;
                 if (__assets != null && __assets.TryGetValue(name, out var asset))
@@ -418,9 +584,9 @@ namespace ZG
 
                     if (!string.IsNullOrEmpty(data.info.fileName) && data.info.fileName != name)
                     {
-                        string filePath = Path.Combine(directoryName, data.info.fileName);
-                        if (File.Exists(filePath))
-                            File.Delete(filePath);
+                        string filePath = AssetFileUtility.Combine(directoryName, data.info.fileName);
+                        if (AssetFileUtility.Exists(filePath))
+                            AssetFileUtility.Delete(filePath);
                     }
                 }
                 else
@@ -438,7 +604,7 @@ namespace ZG
                 data.info.size = (uint)new FileInfo(path).Length;
 
                 using (var md5 = new MD5CryptoServiceProvider())
-                    data.info.md5 = md5.ComputeHash(File.ReadAllBytes(path));
+                    data.info.md5 = md5.ComputeHash(AssetFileUtility.ReadAllBytes(path));
 
                 data.info.fileName = guid.isValid ? $"{name}_{guid.ToString().Replace("-", string.Empty)}" : string.Empty;
 
@@ -448,11 +614,11 @@ namespace ZG
 
                 if (!string.IsNullOrEmpty(data.info.fileName))
                 {
-                    string filePath = Path.Combine(directoryName, data.info.fileName);
-                    if(File.Exists(filePath))
-                        File.Delete(filePath);
+                    string filePath = AssetFileUtility.Combine(directoryName, data.info.fileName);
+                    if(AssetFileUtility.Exists(filePath))
+                        AssetFileUtility.Delete(filePath);
                     
-                    File.Move(path, filePath);
+                    AssetFileUtility.Move(path, filePath);
                 }
             }
             else
@@ -468,11 +634,11 @@ namespace ZG
             if (__assets == null || !__assets.Remove(name, out var asset))
                 return false;
             
-            var folder = Path.GetDirectoryName(name);
+            var folder = AssetFileUtility.GetDirectoryName(name);
             using (var writer = new Writer(folder, this))
                 writer.Save();
 
-            File.WriteAllBytes(__GetAssetPath(name, asset.data.info.fileName), bytes);
+            AssetFileUtility.WriteAllBytes(__GetAssetPath(name, asset.data.info.fileName), bytes);
             
             asset.data.type = AssetType.UncompressedRuntime;
             asset.data.pack = AssetPack.Default;
@@ -490,9 +656,9 @@ namespace ZG
             bool isSaved = false;
             try
             {
-                using (var fileStream = File.OpenWrite(__GetAssetPath(name, asset.data.info.fileName)))
+                using (var fileStream = AssetFileUtility.Open(__GetAssetPath(name, asset.data.info.fileName), FileMode.OpenOrCreate, FileAccess.Write))
                 {
-                    var folder = Path.GetDirectoryName(name);
+                    var folder = AssetFileUtility.GetDirectoryName(name);
                     using (var writer = new Writer(folder, this))
                         writer.Save();
 
@@ -532,7 +698,7 @@ namespace ZG
                 yield break;
 
             bool isSaved = false;
-            var folder = Path.GetDirectoryName(name);
+            var folder = AssetFileUtility.GetDirectoryName(name);
             try
             {
                 using (var writer = new Writer(folder, this))
@@ -570,7 +736,7 @@ namespace ZG
                     return true;*/
 
                 if (!asset.data.isReadOnly)
-                    File.Delete(__GetAssetPath(name, asset.data.info.fileName));
+                    AssetFileUtility.Delete(__GetAssetPath(name, asset.data.info.fileName));
 
                 return true;
             }

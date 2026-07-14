@@ -250,9 +250,9 @@ namespace ZG
             string result;
             if (isOverridePath)
             {
-                result = System.IO.Path.GetFileName(name);
+                result = AssetFileUtility.GetFileName(name);
                 if (!string.IsNullOrEmpty(path))
-                    result = System.IO.Path.Combine(path, result);
+                    result = AssetFileUtility.Combine(path, result);
             }
             else
                 result = name;
@@ -366,7 +366,7 @@ namespace ZG
 
         private string __TryGetFilepath(string filePath)
         {
-            string path = string.IsNullOrEmpty(this.path) ? null : System.IO.Path.Combine(this.path, filePath);
+            string path = string.IsNullOrEmpty(this.path) ? null : AssetFileUtility.Combine(this.path, filePath);
             if (string.IsNullOrEmpty(path) || Type != AndroidAssetPackType.InstallTime && !File.Exists(path))
             {
                 Debug.LogError($"Get Asset Location Failed: {status}, {Name} : {filePath}, {path}");

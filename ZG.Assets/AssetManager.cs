@@ -592,8 +592,8 @@ namespace ZG
                 path = assetName;
             else
             {
-                string folder = Path.GetDirectoryName(assetName);
-                path = string.IsNullOrEmpty(folder) ? fileName : Path.Combine(folder, fileName);
+                string folder = AssetFileUtility.GetDirectoryName(assetName);
+                path = string.IsNullOrEmpty(folder) ? fileName : AssetFileUtility.Combine(folder, fileName);
             }
             
             return path;
@@ -641,7 +641,7 @@ namespace ZG
                 if (key == null)
                     continue;
 
-                name = Path.GetDirectoryName(key);
+                name = AssetFileUtility.GetDirectoryName(key);
                 if (string.IsNullOrEmpty(folder) ? string.IsNullOrEmpty(name) : name.Replace('\\', '/') == folder)
                     ++result;
             }
@@ -703,12 +703,12 @@ namespace ZG
 
         private string __GetManagerPath(string folder)
         {
-            return string.IsNullOrEmpty(folder) ? __path : Path.Combine(Path.GetDirectoryName(__path), folder, Path.GetFileName(folder));
+            return string.IsNullOrEmpty(folder) ? __path : AssetFileUtility.Combine(AssetFileUtility.GetDirectoryName(__path), folder, AssetFileUtility.GetFileName(folder));
         }
 
         private string __GetAssetPath(string assetName, string fileName)
         {
-            return Path.Combine(Path.GetDirectoryName(__path), GetFilePath(assetName, fileName));
+            return AssetFileUtility.Combine(AssetFileUtility.GetDirectoryName(__path), GetFilePath(assetName, fileName));
         }
     }
 }

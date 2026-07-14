@@ -399,7 +399,7 @@ namespace ZG
             var assetPaths = UnityEditor.AssetDatabase.GetAssetPathsFromAssetBundle(bundleName);
             foreach (var assetPath in assetPaths)
             {
-                if (Path.GetFileNameWithoutExtension(assetPath) == assetName)
+                if (AssetFileUtility.GetFileNameWithoutExtension(assetPath) == assetName)
                 {
                     if (UnityEditor.AssetDatabase.LoadAssetAtPath<T>(assetPath) is T result)
                     {
@@ -1113,7 +1113,7 @@ namespace ZG
                 {
                     try
                     {
-                        using (var streamWrapper = new StreamWrapper(File.Open(__GetManagerPath(Path.GetDirectoryName(assetName)), FileMode.Open, FileAccess.ReadWrite)))
+                        using (var streamWrapper = new StreamWrapper(AssetFileUtility.Open(__GetManagerPath(AssetFileUtility.GetDirectoryName(assetName)), FileMode.Open, FileAccess.ReadWrite)))
                         {
                             streamWrapper.Write(asset.offset, (byte)AssetType.UncompressedRuntime);
                         }
