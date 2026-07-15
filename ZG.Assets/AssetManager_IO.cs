@@ -10,6 +10,8 @@ namespace ZG
     public interface IAssetFileManager
     {
         public static IAssetFileManager instance;
+        
+        bool isPending { get; }
 
         string persistentDataPath { get; }
         
@@ -40,6 +42,8 @@ namespace ZG
 
     public static class AssetFileUtility
     {
+        public static bool isPending => IAssetFileManager.instance?.isPending ?? false;
+
         public static string persistentDataPath
         {
             get
@@ -175,6 +179,8 @@ namespace ZG
             
             fileManager.WriteAllBytes(path, bytes);
         }
+        
+        
     }
     
     public partial class AssetManager
@@ -267,6 +273,8 @@ namespace ZG
 
             private BinaryReader __reader;
             private BinaryWriter __writer;
+
+            public bool isCreated => AssetManager != null;
 
             public Writer(string folder, AssetManager assetManager)
             {
