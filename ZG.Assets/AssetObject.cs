@@ -185,6 +185,8 @@ namespace ZG
                 {
                     UnityEngine.Assertions.Assert.IsNull(__target);
                     
+                    //Debug.Log($"[AssetObject]Instantiate {gameObject.name}");
+
                     gameObject = _space == Space.World ? 
                         UnityEngine.Object.Instantiate(gameObject, __parent.position, __parent.rotation) : 
                         UnityEngine.Object.Instantiate(gameObject, __parent);

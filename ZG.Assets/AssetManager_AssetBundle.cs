@@ -15,6 +15,8 @@ namespace ZG
         float progress { get; }
         
         AssetBundle assetBundle { get; }
+
+        event Action completed;
     }
 
     public interface IAssetBundleFactory
@@ -34,24 +36,31 @@ namespace ZG
 
         public AssetBundle assetBundle => __instance.assetBundle;
 
+        public event Action completed;
+
         public AssetBundleAsyncRequest(AssetBundleCreateRequest instance)
         {
             __instance = instance;
+            __instance.completed += __OnCompleted;
+        }
+
+        private void __OnCompleted(AsyncOperation operation)
+        {
+            completed?.Invoke();
         }
 
         public void Dispose()
         {
-            if (__instance.isDone)
-            {
-                var assetBundle = __instance.assetBundle;
-                if (assetBundle != null)
-                {
-                    assetBundle.Unload(true);
-                    Object.Destroy(assetBundle);
-                }
-            }
+            if (__instance == null)
+                return;
 
+            // AssetBundleCreateRequest cannot be cancelled. AssetBundleLoader must keep
+            // an in-flight request alive until it completes, then either take or unload it.
+            UnityEngine.Assertions.Assert.IsTrue(__instance.isDone);
+
+            __instance.completed -= __OnCompleted;
             __instance = null;
+            completed = null;
         }
     }
 
@@ -82,6 +91,55 @@ namespace ZG
 
         internal Dictionary<(string, Type), AssetBundleRequest> _assetBundleRequests;
         internal Dictionary<(string, Type), UnityEngine.Object[]> _assets;
+
+        private void __BeginCreateRequest()
+        {
+            UnityEngine.Assertions.Assert.IsNull(__createRequest);
+
+            __createRequest = __factory.LoadFromFileAsync(__path, __offset);
+            if (__createRequest == null)
+                return;
+
+            __createRequest.completed += __OnCreateRequestCompleted;
+
+            // Some factories may complete synchronously before the event is attached.
+            if (__createRequest.isDone)
+                __OnCreateRequestCompleted();
+        }
+
+        private void __OnCreateRequestCompleted()
+        {
+            var request = __createRequest;
+            if (request == null || !request.isDone || refCount > 0)
+                return;
+
+            __createRequest = null;
+            request.completed -= __OnCreateRequestCompleted;
+
+            var assetBundle = request.assetBundle;
+            request.Dispose();
+
+            if (assetBundle != null)
+            {
+                assetBundle.Unload(true);
+                UnityEngine.Object.Destroy(assetBundle);
+            }
+        }
+
+        private AssetBundle __TakeCreatedAssetBundle()
+        {
+            var request = __createRequest;
+            if (request == null)
+                return null;
+
+            var assetBundle = request.assetBundle;
+
+            request.completed -= __OnCreateRequestCompleted;
+            __createRequest = null;
+            request.Dispose();
+
+            return assetBundle;
+        }
 
         public override bool keepWaiting
         {
@@ -124,9 +182,9 @@ namespace ZG
                     }
 
                     if (__createRequest == null)
-                        __createRequest = __factory.LoadFromFileAsync(__path, __offset);
+                        __BeginCreateRequest();
 
-                    return !__createRequest.isDone;
+                    return __createRequest != null && !__createRequest.isDone;
                 }
                 
                 if (isDone)
@@ -141,9 +199,11 @@ namespace ZG
                 else if (__createRequest != null)
                 {
                     UnityEngine.Assertions.Assert.IsNull(__assetBundle);
-                    
-                    __createRequest.Dispose();
-                    __createRequest = null;
+
+                    // Do not drop an in-flight request: the native load cannot be
+                    // cancelled and a later Retain must reuse this same request.
+                    if (__createRequest.isDone)
+                        __OnCreateRequestCompleted();
                 }
 
                 return false;
@@ -233,7 +293,7 @@ namespace ZG
             UnityEngine.Assertions.Assert.IsTrue(refCount > 0);
             if (--refCount == 0)
             {
-                Debug.Log($"AssetBundle {__path} Released!");
+                //Debug.Log($"AssetBundle {__path} Released!");
                 
                 if (_assets != null)
                 {
@@ -266,22 +326,11 @@ namespace ZG
                 else if (__createRequest != null)
                 {
                     UnityEngine.Assertions.Assert.IsNull(__assetBundle);
-                    
-                    __createRequest.Dispose();
 
-                    __createRequest = null;
-
-                    /*if (__createRequest.isDone)
-                    {
-                        var assetBundle = __createRequest.assetBundle;
-                        if (assetBundle != null)
-                        {
-                            assetBundle.Unload(true);
-                            UnityEngine.Object.Destroy(assetBundle);
-                        }
-
-                        __createRequest = null;
-                    }*/
+                    // Keep the request registered until completion. If another caller
+                    // Retains this loader first, it will reuse the same native request.
+                    if (__createRequest.isDone)
+                        __OnCreateRequestCompleted();
                 }
             }
 
@@ -322,9 +371,7 @@ namespace ZG
             {
                 UnityEngine.Assertions.Assert.IsFalse(isDone);
 
-                __assetBundle = __createRequest.assetBundle;
-
-                __createRequest = null;
+                __assetBundle = __TakeCreatedAssetBundle();
             }
 
             if (!isDone)
@@ -654,6 +701,7 @@ namespace ZG
     {
         private IAssetBundleFactory __factory;
         private Dictionary<string, AssetBundleLoader> __assetBundleLoaders;
+        private Dictionary<(string path, ulong offset), AssetBundleLoader> __assetBundleLoadersByPath;
 
         private AssetManager(IAssetBundleFactory factory)
         {
@@ -667,6 +715,21 @@ namespace ZG
 
             if (GetAssetPath(name, out var asset, out ulong fileOffset, out string filePath))
             {
+                string normalizedPath = filePath.Replace('\\', '/');
+                var physicalKey = (normalizedPath, fileOffset);
+
+                if (__assetBundleLoadersByPath != null &&
+                    __assetBundleLoadersByPath.TryGetValue(physicalKey, out assetBundleLoader))
+                {
+                    if (__assetBundleLoaders == null)
+                        __assetBundleLoaders = new Dictionary<string, AssetBundleLoader>();
+
+                    __assetBundleLoaders[name] = assetBundleLoader;
+                    return assetBundleLoader;
+                }
+
+                //UnityEngine.Debug.Log($"CreateAssetBundleLoader {name}");
+
                 if (__factory == null)
                     __factory = new AssetBundleFactory();
                 
@@ -683,6 +746,11 @@ namespace ZG
                     __assetBundleLoaders = new Dictionary<string, AssetBundleLoader>();
 
                 __assetBundleLoaders[name] = assetBundleLoader;
+
+                if (__assetBundleLoadersByPath == null)
+                    __assetBundleLoadersByPath = new Dictionary<(string path, ulong offset), AssetBundleLoader>();
+
+                __assetBundleLoadersByPath[physicalKey] = assetBundleLoader;
 
                 for (int i = 0; i < numDependencies; ++i)
                     dependencies[i] = GetOrCreateAssetBundleLoader(asset.data.dependencies[i]);

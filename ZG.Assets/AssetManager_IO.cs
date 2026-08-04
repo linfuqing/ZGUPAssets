@@ -33,6 +33,8 @@ namespace ZG
 
         void Move(string srcPath, string dstPath);
         
+        void Materialize(string srcPath, string dstPath);
+        
         Stream Open(string path, FileMode fileMode, FileAccess fileAccess);
 
         byte[] ReadAllBytes(string path);
@@ -149,6 +151,19 @@ namespace ZG
             fileManager.Move(srcPath, dstPath);
         }
         
+        public static void Materialize(string srcPath, string dstPath)
+        {
+            var fileManager = IAssetFileManager.instance;
+            if (fileManager == null)
+            {
+                File.Copy(srcPath, dstPath);
+
+                return;
+            }
+
+            fileManager.Materialize(srcPath, dstPath);
+        }
+
         public static Stream Open(string path, FileMode fileMode, FileAccess fileAccess)
         {
             var fileManager = IAssetFileManager.instance;
