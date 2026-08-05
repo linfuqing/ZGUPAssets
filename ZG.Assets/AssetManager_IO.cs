@@ -156,6 +156,9 @@ namespace ZG
             var fileManager = IAssetFileManager.instance;
             if (fileManager == null)
             {
+                if (File.Exists(dstPath))
+                    return;
+
                 File.Copy(srcPath, dstPath);
 
                 return;
