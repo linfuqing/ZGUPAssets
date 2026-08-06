@@ -35,6 +35,8 @@ namespace ZG
         
         void Materialize(string srcPath, string dstPath);
         
+        void Dematerialize(string path);
+
         Stream Open(string path, FileMode fileMode, FileAccess fileAccess);
 
         byte[] ReadAllBytes(string path);
@@ -165,6 +167,15 @@ namespace ZG
             }
 
             fileManager.Materialize(srcPath, dstPath);
+        }
+
+        public static void Dematerialize(string path)
+        {
+            var fileManager = IAssetFileManager.instance;
+            if (fileManager == null)
+                return;
+
+            fileManager.Dematerialize(path);
         }
 
         public static Stream Open(string path, FileMode fileMode, FileAccess fileAccess)
