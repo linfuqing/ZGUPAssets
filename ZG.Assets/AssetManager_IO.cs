@@ -33,8 +33,18 @@ namespace ZG
 
         void Move(string srcPath, string dstPath);
         
+        /// <summary>
+        /// 破坏性刷新（replace 语义）：以 srcPath 的当前内容为准重写 dstPath，
+        /// 即使 dstPath 已存在也会被覆盖（用于防篡改与内容更新后的陈旧副本刷新）。
+        /// 调用方契约：同一会话内对同一 dstPath 只调用一次，且保证 dstPath
+        /// 未被运行时打开/使用（去重与生命周期由调用方负责，本接口不去重）。
+        /// </summary>
         void Materialize(string srcPath, string dstPath);
         
+        /// <summary>
+        /// 删除 Materialize 产生的副本，幂等（路径不存在时静默返回）。
+        /// 调用方契约：仅对自己 Materialize 过、且运行时已不再使用的路径调用。
+        /// </summary>
         void Dematerialize(string path);
 
         Stream Open(string path, FileMode fileMode, FileAccess fileAccess);
@@ -155,11 +165,22 @@ namespace ZG
         
         public static void Materialize(string srcPath, string dstPath)
         {
+            //原地读平台（如 Android/iOS：下载库与 remap 目标共享同一目录树）：
+            //源就是目标，无需也不允许任何写入/删除——replace 语义会删掉正主文件。
+            if (!string.IsNullOrEmpty(srcPath) &&
+                !string.IsNullOrEmpty(dstPath) &&
+                string.Equals(
+                    srcPath.Replace('\\', '/'),
+                    dstPath.Replace('\\', '/'),
+                    StringComparison.OrdinalIgnoreCase))
+                return;
+
             var fileManager = IAssetFileManager.instance;
             if (fileManager == null)
             {
+                //与 IAssetFileManager.Materialize 契约一致：replace 语义，刷新陈旧副本。
                 if (File.Exists(dstPath))
-                    return;
+                    File.Delete(dstPath);
 
                 File.Copy(srcPath, dstPath);
 
@@ -173,7 +194,13 @@ namespace ZG
         {
             var fileManager = IAssetFileManager.instance;
             if (fileManager == null)
+            {
+                //与 IAssetFileManager.Dematerialize 契约一致：真删，幂等。
+                if (File.Exists(path))
+                    File.Delete(path);
+
                 return;
+            }
 
             fileManager.Dematerialize(path);
         }
